@@ -1,130 +1,244 @@
-type Wishlist = 
+type UserRole = 
  record {
-   productIds: vec ProductId;
+   role: Role;
    userId: UserId;
  };
 type UserId = principal;
 type Timestamp = int;
-type SortOption = 
+type Role = 
  variant {
-   bestSelling;
-   newest;
-   priceAsc;
-   priceDesc;
+   admin;
+   finance;
+   manager;
+   sales_rep;
  };
-type ShippingAddress = 
- record {
-   city: text;
-   country: text;
-   name: text;
-   state: text;
-   street: text;
-   zip: text;
+type PurchaseOrderStatus = 
+ variant {
+   cancelled;
+   draft;
+   received;
+   submitted;
  };
-type ProductInput = 
+type PurchaseOrderId = nat;
+type PurchaseOrder = 
  record {
-   category: text;
-   description: text;
-   images: vec text;
-   inventoryCount: nat;
-   price: nat;
-   title: text;
+   createdAt: Timestamp;
+   expectedDelivery: Timestamp;
+   id: PurchaseOrderId;
+   lineItems: vec PurchaseLineItem;
+   status: PurchaseOrderStatus;
+   vendor: text;
+ };
+type PurchaseLineItem = 
+ record {
+   productId: ProductId;
+   quantity: nat;
+   unitCost: nat;
  };
 type ProductId = nat;
 type Product = 
  record {
    category: text;
+   costPrice: nat;
    createdAt: Timestamp;
-   description: text;
    id: ProductId;
-   images: vec text;
-   inventoryCount: nat;
-   price: nat;
-   soldCount: nat;
-   title: text;
+   name: text;
+   reorderThreshold: nat;
+   sellingPrice: nat;
+   sku: text;
+   stockQuantity: nat;
  };
-type PageResult = 
- record {
-   items: vec Product;
-   page: nat;
-   pageSize: nat;
-   total: nat;
- };
-type OrderStatus = 
+type InvoiceStatus = 
  variant {
    cancelled;
-   delivered;
+   draft;
+   overdue;
    paid;
-   pending;
-   shipped;
+   sent;
  };
-type OrderItem = 
+type InvoiceLineItem = 
  record {
-   price: nat;
-   productId: ProductId;
+   description: text;
    quantity: nat;
-   title: text;
+   unitPrice: nat;
  };
-type OrderId = nat;
-type Order = 
+type InvoiceId = nat;
+type Invoice = 
  record {
+   contactId: EntityId;
+   dealId: opt EntityId;
+   dueDate: Timestamp;
+   id: InvoiceId;
+   invoiceNumber: text;
+   issuedAt: Timestamp;
+   lineItems: vec InvoiceLineItem;
+   paidAt: opt Timestamp;
+   status: InvoiceStatus;
+ };
+type FinancialSummary = 
+ record {
+   cashBalance: int;
+   grossMargin: nat;
+   inventoryValue: nat;
+   outstandingReceivables: nat;
+   totalExpenses: nat;
+   totalRevenue: nat;
+ };
+type EntityId = nat;
+type DealStage = 
+ variant {
+   closed_lost;
+   closed_won;
+   discovery;
+   negotiation;
+   proposal;
+   prospect;
+ };
+type DealId = nat;
+type Deal = 
+ record {
+   closeDate: Timestamp;
+   contactId: ContactId;
    createdAt: Timestamp;
-   id: OrderId;
-   items: vec OrderItem;
-   paymentIntent: text;
-   shippingAddress: ShippingAddress;
-   status: OrderStatus;
-   total: nat;
-   userId: UserId;
+   id: DealId;
+   notes: text;
+   probability: nat;
+   stage: DealStage;
+   title: text;
+   value: nat;
  };
-type ListProductsArgs = 
- record {
-   category: opt text;
-   maxPrice: opt nat;
-   minPrice: opt nat;
-   page: nat;
-   pageSize: nat;
-   search: opt text;
-   sortBy: SortOption;
+type ContactStatus = 
+ variant {
+   customer;
+   lead;
+   prospect;
  };
-type CreateOrderArgs = 
+type ContactId = nat;
+type Contact = 
  record {
-   paymentIntent: text;
-   shippingAddress: ShippingAddress;
+   company: text;
+   createdAt: Timestamp;
+   email: text;
+   id: ContactId;
+   name: text;
+   notes: text;
+   phone: text;
+   status: ContactStatus;
  };
-type CartItem = 
- record {
-   productId: ProductId;
-   quantity: nat;
+type ActivityType = 
+ variant {
+   call;
+   email;
+   meeting;
+   task;
  };
-type Cart = 
+type ActivityId = nat;
+type Activity = 
  record {
-   items: vec CartItem;
-   userId: UserId;
+   activityType: ActivityType;
+   completedAt: opt Timestamp;
+   contactId: ContactId;
+   createdAt: Timestamp;
+   createdBy: UserId;
+   dealId: opt DealId;
+   description: text;
+   dueDate: Timestamp;
+   id: ActivityId;
  };
 service : {
-  addAdmin: (newAdmin: UserId) -> ();
-  addToCart: (productId: ProductId, quantity: nat) -> ();
-  addToWishlist: (productId: ProductId) -> ();
-  adminListOrders: (page: nat, pageSize: nat) -> (vec Order);
-  adminUpdateOrderStatus: (id: OrderId, status: OrderStatus) -> (opt Order);
-  clearCart: () -> ();
-  createOrder: (args: CreateOrderArgs) -> (Order);
-  createProduct: (input: ProductInput) -> (Product);
+  adjustStock: (id: ProductId, delta: int) -> (opt Product);
+  assignRole: (userId: UserId, role: Role) -> ();
+  bootstrapFirstAdmin: () -> ();
+  completeActivity: (id: ActivityId, completedAt: Timestamp) ->
+   (variant {
+      err: text;
+      ok: opt Activity;
+    });
+  createActivity: (activityType: ActivityType, description: text, contactId:
+   ContactId, dealId: opt DealId, dueDate: Timestamp) ->
+   (variant {
+      err: text;
+      ok: Activity;
+    });
+  createContact: (name: text, email: text, phone: text, company: text,
+   status: ContactStatus, notes: text) -> (variant {
+                                             err: text;
+                                             ok: Contact;
+                                           });
+  createDeal: (title: text, value: nat, stage: DealStage, contactId:
+   ContactId, probability: nat, closeDate: Timestamp, notes: text) ->
+   (variant {
+      err: text;
+      ok: Deal;
+    });
+  createInvoice: (contactId: EntityId, dealId: opt EntityId, lineItems:
+   vec InvoiceLineItem, dueDate: Timestamp) -> (Invoice);
+  createProduct: (name: text, sku: text, costPrice: nat, sellingPrice: 
+   nat, stockQuantity: nat, reorderThreshold: nat, category: text) ->
+   (Product);
+  createPurchaseOrder: (vendor: text, lineItems: vec PurchaseLineItem,
+   expectedDelivery: Timestamp) -> (PurchaseOrder);
+  deleteActivity: (id: ActivityId) -> (variant {
+                                         err: text;
+                                         ok: bool;
+                                       });
+  deleteContact: (id: ContactId) -> (variant {
+                                       err: text;
+                                       ok: bool;
+                                     });
+  deleteDeal: (id: DealId) -> (variant {
+                                 err: text;
+                                 ok: bool;
+                               });
+  deleteInvoice: (id: InvoiceId) -> (bool);
   deleteProduct: (id: ProductId) -> (bool);
-  getCart: () -> (Cart) query;
-  getMyOrders: () -> (vec Order) query;
-  getOrder: (id: OrderId) -> (opt Order);
+  filterActivities: (contactIdFilter: opt ContactId, dealIdFilter:
+   opt DealId) -> (vec Activity) query;
+  filterDeals: (stageFilter: opt DealStage, contactIdFilter:
+   opt ContactId) -> (vec Deal) query;
+  getActivity: (id: ActivityId) -> (opt Activity) query;
+  getContact: (id: ContactId) -> (opt Contact) query;
+  getDeal: (id: DealId) -> (opt Deal) query;
+  getFinancialSummary: () -> (FinancialSummary) query;
+  getInvoice: (id: InvoiceId) -> (opt Invoice) query;
+  getLowStockProducts: () -> (vec Product) query;
+  getMyRole: () -> (opt Role) query;
   getProduct: (id: ProductId) -> (opt Product) query;
-  getWishlist: () -> (Wishlist) query;
-  initializeAdmin: () -> ();
-  isAdmin: (who: UserId) -> (bool) query;
-  listProducts: (args: ListProductsArgs) -> (PageResult) query;
-  removeAdmin: (target: UserId) -> ();
-  removeFromCart: (productId: ProductId) -> ();
-  removeFromWishlist: (productId: ProductId) -> ();
-  searchProducts: (term: text, page: nat, pageSize: nat) ->
-   (PageResult) query;
-  updateCartQuantity: (productId: ProductId, quantity: nat) -> ();
-  updateProduct: (id: ProductId, input: ProductInput) -> (opt Product);
+  getPurchaseOrder: (id: PurchaseOrderId) -> (opt PurchaseOrder) query;
+  getRevenueByPeriod: (months: nat) -> (vec record {
+                                              text;
+                                              nat;
+                                            }) query;
+  listActivities: () -> (vec Activity) query;
+  listContacts: () -> (vec Contact) query;
+  listDeals: () -> (vec Deal) query;
+  listInvoices: () -> (vec Invoice) query;
+  listProducts: () -> (vec Product) query;
+  listPurchaseOrders: () -> (vec PurchaseOrder) query;
+  listUserRoles: () -> (vec UserRole) query;
+  removeRole: (userId: UserId) -> ();
+  searchContacts: (nameFilter: opt text, emailFilter: opt text,
+   companyFilter: opt text, statusFilter: opt ContactStatus) ->
+   (vec Contact) query;
+  searchProducts: (nameFilter: opt text, categoryFilter: opt text,
+   lowStockOnly: bool) -> (vec Product) query;
+  updateContact: (id: ContactId, name: text, email: text, phone: text,
+   company: text, status: ContactStatus, notes: text) ->
+   (variant {
+      err: text;
+      ok: opt Contact;
+    });
+  updateDeal: (id: DealId, title: text, value: nat, stage: DealStage,
+   contactId: ContactId, probability: nat, closeDate: Timestamp, notes:
+   text) -> (variant {
+               err: text;
+               ok: opt Deal;
+             });
+  updateInvoiceStatus: (id: InvoiceId, status: InvoiceStatus, paidAt:
+   opt Timestamp) -> (opt Invoice);
+  updateProduct: (id: ProductId, name: text, sku: text, costPrice: nat,
+   sellingPrice: nat, stockQuantity: nat, reorderThreshold: nat, category:
+   text) -> (opt Product);
+  updatePurchaseOrderStatus: (id: PurchaseOrderId, status:
+   PurchaseOrderStatus) -> (opt PurchaseOrder);
 }

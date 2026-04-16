@@ -10,108 +10,227 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface Cart { 'userId' : UserId, 'items' : Array<CartItem> }
-export interface CartItem { 'productId' : ProductId, 'quantity' : bigint }
-export interface CreateOrderArgs {
-  'paymentIntent' : string,
-  'shippingAddress' : ShippingAddress,
-}
-export interface ListProductsArgs {
-  'sortBy' : SortOption,
-  'page' : bigint,
-  'pageSize' : bigint,
-  'search' : [] | [string],
-  'maxPrice' : [] | [bigint],
-  'category' : [] | [string],
-  'minPrice' : [] | [bigint],
-}
-export interface Order {
-  'id' : OrderId,
-  'status' : OrderStatus,
-  'total' : bigint,
-  'userId' : UserId,
+export interface Activity {
+  'id' : ActivityId,
+  'completedAt' : [] | [Timestamp],
+  'activityType' : ActivityType,
   'createdAt' : Timestamp,
-  'paymentIntent' : string,
-  'shippingAddress' : ShippingAddress,
-  'items' : Array<OrderItem>,
+  'createdBy' : UserId,
+  'dueDate' : Timestamp,
+  'description' : string,
+  'dealId' : [] | [DealId],
+  'contactId' : ContactId,
 }
-export type OrderId = bigint;
-export interface OrderItem {
+export type ActivityId = bigint;
+export type ActivityType = { 'call' : null } |
+  { 'task' : null } |
+  { 'email' : null } |
+  { 'meeting' : null };
+export interface Contact {
+  'id' : ContactId,
+  'status' : ContactStatus,
+  'name' : string,
+  'createdAt' : Timestamp,
+  'email' : string,
+  'company' : string,
+  'notes' : string,
+  'phone' : string,
+}
+export type ContactId = bigint;
+export type ContactStatus = { 'customer' : null } |
+  { 'lead' : null } |
+  { 'prospect' : null };
+export interface Deal {
+  'id' : DealId,
+  'probability' : bigint,
+  'closeDate' : Timestamp,
   'title' : string,
-  'productId' : ProductId,
+  'value' : bigint,
+  'createdAt' : Timestamp,
+  'stage' : DealStage,
+  'notes' : string,
+  'contactId' : ContactId,
+}
+export type DealId = bigint;
+export type DealStage = { 'closed_won' : null } |
+  { 'discovery' : null } |
+  { 'prospect' : null } |
+  { 'closed_lost' : null } |
+  { 'proposal' : null } |
+  { 'negotiation' : null };
+export type EntityId = bigint;
+export interface FinancialSummary {
+  'grossMargin' : bigint,
+  'totalExpenses' : bigint,
+  'outstandingReceivables' : bigint,
+  'cashBalance' : bigint,
+  'inventoryValue' : bigint,
+  'totalRevenue' : bigint,
+}
+export interface Invoice {
+  'id' : InvoiceId,
+  'status' : InvoiceStatus,
+  'lineItems' : Array<InvoiceLineItem>,
+  'dueDate' : Timestamp,
+  'dealId' : [] | [EntityId],
+  'invoiceNumber' : string,
+  'contactId' : EntityId,
+  'issuedAt' : Timestamp,
+  'paidAt' : [] | [Timestamp],
+}
+export type InvoiceId = bigint;
+export interface InvoiceLineItem {
+  'description' : string,
   'quantity' : bigint,
-  'price' : bigint,
+  'unitPrice' : bigint,
 }
-export type OrderStatus = { 'shipped' : null } |
-  { 'cancelled' : null } |
-  { 'pending' : null } |
+export type InvoiceStatus = { 'cancelled' : null } |
   { 'paid' : null } |
-  { 'delivered' : null };
-export interface PageResult {
-  'total' : bigint,
-  'page' : bigint,
-  'pageSize' : bigint,
-  'items' : Array<Product>,
-}
+  { 'sent' : null } |
+  { 'overdue' : null } |
+  { 'draft' : null };
 export interface Product {
   'id' : ProductId,
-  'title' : string,
+  'sku' : string,
+  'stockQuantity' : bigint,
+  'name' : string,
   'createdAt' : Timestamp,
-  'description' : string,
+  'sellingPrice' : bigint,
   'category' : string,
-  'inventoryCount' : bigint,
-  'price' : bigint,
-  'soldCount' : bigint,
-  'images' : Array<string>,
+  'costPrice' : bigint,
+  'reorderThreshold' : bigint,
 }
 export type ProductId = bigint;
-export interface ProductInput {
-  'title' : string,
-  'description' : string,
-  'category' : string,
-  'inventoryCount' : bigint,
-  'price' : bigint,
-  'images' : Array<string>,
+export interface PurchaseLineItem {
+  'productId' : ProductId,
+  'quantity' : bigint,
+  'unitCost' : bigint,
 }
-export interface ShippingAddress {
-  'zip' : string,
-  'street' : string,
-  'country' : string,
-  'city' : string,
-  'name' : string,
-  'state' : string,
+export interface PurchaseOrder {
+  'id' : PurchaseOrderId,
+  'status' : PurchaseOrderStatus,
+  'lineItems' : Array<PurchaseLineItem>,
+  'createdAt' : Timestamp,
+  'vendor' : string,
+  'expectedDelivery' : Timestamp,
 }
-export type SortOption = { 'bestSelling' : null } |
-  { 'newest' : null } |
-  { 'priceDesc' : null } |
-  { 'priceAsc' : null };
+export type PurchaseOrderId = bigint;
+export type PurchaseOrderStatus = { 'cancelled' : null } |
+  { 'submitted' : null } |
+  { 'draft' : null } |
+  { 'received' : null };
+export type Role = { 'manager' : null } |
+  { 'admin' : null } |
+  { 'finance' : null } |
+  { 'sales_rep' : null };
 export type Timestamp = bigint;
 export type UserId = Principal;
-export interface Wishlist { 'productIds' : Array<ProductId>, 'userId' : UserId }
+export interface UserRole { 'userId' : UserId, 'role' : Role }
 export interface _SERVICE {
-  'addAdmin' : ActorMethod<[UserId], undefined>,
-  'addToCart' : ActorMethod<[ProductId, bigint], undefined>,
-  'addToWishlist' : ActorMethod<[ProductId], undefined>,
-  'adminListOrders' : ActorMethod<[bigint, bigint], Array<Order>>,
-  'adminUpdateOrderStatus' : ActorMethod<[OrderId, OrderStatus], [] | [Order]>,
-  'clearCart' : ActorMethod<[], undefined>,
-  'createOrder' : ActorMethod<[CreateOrderArgs], Order>,
-  'createProduct' : ActorMethod<[ProductInput], Product>,
+  'adjustStock' : ActorMethod<[ProductId, bigint], [] | [Product]>,
+  'assignRole' : ActorMethod<[UserId, Role], undefined>,
+  'bootstrapFirstAdmin' : ActorMethod<[], undefined>,
+  'completeActivity' : ActorMethod<
+    [ActivityId, Timestamp],
+    { 'ok' : [] | [Activity] } |
+      { 'err' : string }
+  >,
+  'createActivity' : ActorMethod<
+    [ActivityType, string, ContactId, [] | [DealId], Timestamp],
+    { 'ok' : Activity } |
+      { 'err' : string }
+  >,
+  'createContact' : ActorMethod<
+    [string, string, string, string, ContactStatus, string],
+    { 'ok' : Contact } |
+      { 'err' : string }
+  >,
+  'createDeal' : ActorMethod<
+    [string, bigint, DealStage, ContactId, bigint, Timestamp, string],
+    { 'ok' : Deal } |
+      { 'err' : string }
+  >,
+  'createInvoice' : ActorMethod<
+    [EntityId, [] | [EntityId], Array<InvoiceLineItem>, Timestamp],
+    Invoice
+  >,
+  'createProduct' : ActorMethod<
+    [string, string, bigint, bigint, bigint, bigint, string],
+    Product
+  >,
+  'createPurchaseOrder' : ActorMethod<
+    [string, Array<PurchaseLineItem>, Timestamp],
+    PurchaseOrder
+  >,
+  'deleteActivity' : ActorMethod<
+    [ActivityId],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
+  'deleteContact' : ActorMethod<
+    [ContactId],
+    { 'ok' : boolean } |
+      { 'err' : string }
+  >,
+  'deleteDeal' : ActorMethod<[DealId], { 'ok' : boolean } | { 'err' : string }>,
+  'deleteInvoice' : ActorMethod<[InvoiceId], boolean>,
   'deleteProduct' : ActorMethod<[ProductId], boolean>,
-  'getCart' : ActorMethod<[], Cart>,
-  'getMyOrders' : ActorMethod<[], Array<Order>>,
-  'getOrder' : ActorMethod<[OrderId], [] | [Order]>,
+  'filterActivities' : ActorMethod<
+    [[] | [ContactId], [] | [DealId]],
+    Array<Activity>
+  >,
+  'filterDeals' : ActorMethod<
+    [[] | [DealStage], [] | [ContactId]],
+    Array<Deal>
+  >,
+  'getActivity' : ActorMethod<[ActivityId], [] | [Activity]>,
+  'getContact' : ActorMethod<[ContactId], [] | [Contact]>,
+  'getDeal' : ActorMethod<[DealId], [] | [Deal]>,
+  'getFinancialSummary' : ActorMethod<[], FinancialSummary>,
+  'getInvoice' : ActorMethod<[InvoiceId], [] | [Invoice]>,
+  'getLowStockProducts' : ActorMethod<[], Array<Product>>,
+  'getMyRole' : ActorMethod<[], [] | [Role]>,
   'getProduct' : ActorMethod<[ProductId], [] | [Product]>,
-  'getWishlist' : ActorMethod<[], Wishlist>,
-  'initializeAdmin' : ActorMethod<[], undefined>,
-  'isAdmin' : ActorMethod<[UserId], boolean>,
-  'listProducts' : ActorMethod<[ListProductsArgs], PageResult>,
-  'removeAdmin' : ActorMethod<[UserId], undefined>,
-  'removeFromCart' : ActorMethod<[ProductId], undefined>,
-  'removeFromWishlist' : ActorMethod<[ProductId], undefined>,
-  'searchProducts' : ActorMethod<[string, bigint, bigint], PageResult>,
-  'updateCartQuantity' : ActorMethod<[ProductId, bigint], undefined>,
-  'updateProduct' : ActorMethod<[ProductId, ProductInput], [] | [Product]>,
+  'getPurchaseOrder' : ActorMethod<[PurchaseOrderId], [] | [PurchaseOrder]>,
+  'getRevenueByPeriod' : ActorMethod<[bigint], Array<[string, bigint]>>,
+  'listActivities' : ActorMethod<[], Array<Activity>>,
+  'listContacts' : ActorMethod<[], Array<Contact>>,
+  'listDeals' : ActorMethod<[], Array<Deal>>,
+  'listInvoices' : ActorMethod<[], Array<Invoice>>,
+  'listProducts' : ActorMethod<[], Array<Product>>,
+  'listPurchaseOrders' : ActorMethod<[], Array<PurchaseOrder>>,
+  'listUserRoles' : ActorMethod<[], Array<UserRole>>,
+  'removeRole' : ActorMethod<[UserId], undefined>,
+  'searchContacts' : ActorMethod<
+    [[] | [string], [] | [string], [] | [string], [] | [ContactStatus]],
+    Array<Contact>
+  >,
+  'searchProducts' : ActorMethod<
+    [[] | [string], [] | [string], boolean],
+    Array<Product>
+  >,
+  'updateContact' : ActorMethod<
+    [ContactId, string, string, string, string, ContactStatus, string],
+    { 'ok' : [] | [Contact] } |
+      { 'err' : string }
+  >,
+  'updateDeal' : ActorMethod<
+    [DealId, string, bigint, DealStage, ContactId, bigint, Timestamp, string],
+    { 'ok' : [] | [Deal] } |
+      { 'err' : string }
+  >,
+  'updateInvoiceStatus' : ActorMethod<
+    [InvoiceId, InvoiceStatus, [] | [Timestamp]],
+    [] | [Invoice]
+  >,
+  'updateProduct' : ActorMethod<
+    [ProductId, string, string, bigint, bigint, bigint, bigint, string],
+    [] | [Product]
+  >,
+  'updatePurchaseOrderStatus' : ActorMethod<
+    [PurchaseOrderId, PurchaseOrderStatus],
+    [] | [PurchaseOrder]
+  >,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

@@ -1,13 +1,70 @@
-// Version: 1.0.0
-type CartItem__1044444615 =
-  {productId : ProductId__593108714; quantity : Nat};
+// Version: 3.0.0
+type ActivityId__717761742 = EntityId__892221652;
+type ActivityType__865120515 = {#call; #email; #meeting; #task};
+type Activity__10496692 =
+  {
+    activityType : ActivityType__865120515;
+    completedAt : ?Timestamp__301639476;
+    contactId : ContactId__836243698;
+    createdAt : Timestamp__301639476;
+    createdBy : UserId__158757552;
+    dealId : ?DealId__471204457;
+    description : Text;
+    dueDate : Timestamp__301639476;
+    id : ActivityId__717761742
+  };
+type ContactId__836243698 = EntityId__892221652;
+type ContactStatus__150781598 = {#customer; #lead; #prospect};
+type Contact__147242489 =
+  {
+    company : Text;
+    createdAt : Timestamp__301639476;
+    email : Text;
+    id : ContactId__836243698;
+    name : Text;
+    notes : Text;
+    phone : Text;
+    status : ContactStatus__150781598
+  };
 type Data__159895909<T> = {var count : Nat__490723111; elements : [var ?T]};
 type Data__791452850<K, V> =
   {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type DealId__471204457 = EntityId__892221652;
+type DealStage__482157454 =
+  {#closed_lost; #closed_won; #discovery; #negotiation; #proposal; #prospect};
+type Deal__868150648 =
+  {
+    closeDate : Timestamp__301639476;
+    contactId : ContactId__836243698;
+    createdAt : Timestamp__301639476;
+    id : DealId__471204457;
+    notes : Text;
+    probability : Nat;
+    stage : DealStage__482157454;
+    title : Text;
+    value : Nat
+  };
+type EntityId__892221652 = Nat;
 type Internal__667636161<T> =
   {children : [var ?Node__92254746<T>]; data : Data__159895909<T>};
 type Internal__8484328<K, V> =
   {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type InvoiceId__379764329 = EntityId__892221652;
+type InvoiceLineItem__985082740 =
+  {description : Text; quantity : Nat; unitPrice : Nat};
+type InvoiceStatus__785833808 = {#cancelled; #draft; #overdue; #paid; #sent};
+type Invoice__959688923 =
+  {
+    contactId : EntityId__892221652;
+    dealId : ?EntityId__892221652;
+    dueDate : Timestamp__301639476;
+    id : InvoiceId__379764329;
+    invoiceNumber : Text;
+    issuedAt : Timestamp__301639476;
+    lineItems : [InvoiceLineItem__985082740];
+    paidAt : ?Timestamp__301639476;
+    status : InvoiceStatus__785833808
+  };
 type Leaf__520550824<T> = {data : Data__159895909<T>};
 type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
 type List__415060402<T> = List__790383201<T>;
@@ -17,52 +74,53 @@ type List__790383201<T> =
     var blocks : [var [var ?T]];
     var elementIndex : Nat__490723111
   };
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
 type Nat__490723111 = Nat__920180692;
 type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
 type Node__92254746<T> =
   {#internal : Internal__667636161<T>; #leaf : Leaf__520550824<T>};
-type OrderId__197865225 = Nat;
-type OrderId__521176343 = OrderId__197865225;
-type OrderItem__241319351 =
+type OldCartItem__287857270 =
+  {productId : OldProductId__233768222; quantity : Nat};
+type OldOrderId__1043857103 = Nat;
+type OldOrderItem__518217749 =
   {
     price : Nat;
-    productId : ProductId__903190681;
+    productId : OldProductId__233768222;
     quantity : Nat;
     title : Text
   };
-type OrderStatus__272730104 =
+type OldOrderStatus__13175761 =
   {#cancelled; #delivered; #paid; #pending; #shipped};
-type Order__141779993 =
+type OldOrder__235915581 =
   {
-    createdAt : Timestamp__813860109;
-    id : OrderId__521176343;
-    items : [OrderItem__241319351];
+    createdAt : OldTimestamp__27916213;
+    id : OldOrderId__1043857103;
+    items : [OldOrderItem__518217749];
     paymentIntent : Text;
-    shippingAddress : ShippingAddress__910423011;
-    status : OrderStatus__272730104;
+    shippingAddress : OldShippingAddress__1066275119;
+    status : OldOrderStatus__13175761;
     total : Nat;
-    userId : UserId__41638867
+    userId : OldUserId__580276348
   };
-type ProductId__160010635 = Nat;
-type ProductId__324763372 = ProductId__160010635;
-type ProductId__490034520 = ProductId__160010635;
-type ProductId__593108714 = ProductId__160010635;
-type ProductId__903190681 = ProductId__160010635;
-type Product__389207432 =
+type OldProductId__233768222 = Nat;
+type OldProduct__278484740 =
   {
     category : Text;
-    createdAt : Timestamp__384207765;
+    createdAt : OldTimestamp__27916213;
     description : Text;
-    id : ProductId__324763372;
+    id : OldProductId__233768222;
     images : [Text];
     inventoryCount : Nat;
     price : Nat;
     soldCount : Nat;
     title : Text
   };
-type ShippingAddress__910423011 =
+type OldShippingAddress__1066275119 =
   {
     city : Text;
     country : Text;
@@ -71,44 +129,97 @@ type ShippingAddress__910423011 =
     street : Text;
     zip : Text
   };
+type OldTimestamp__27916213 = Int;
+type OldUserId__580276348 = Principal;
+type ProductId__127144563 = EntityId__892221652;
+type Product__711661123 =
+  {
+    category : Text;
+    costPrice : Nat;
+    createdAt : Timestamp__301639476;
+    id : ProductId__127144563;
+    name : Text;
+    reorderThreshold : Nat;
+    sellingPrice : Nat;
+    sku : Text;
+    stockQuantity : Nat
+  };
+type PurchaseLineItem__621437167 =
+  {productId : ProductId__127144563; quantity : Nat; unitCost : Nat};
+type PurchaseOrderId__128184127 = EntityId__892221652;
+type PurchaseOrderStatus__936522262 =
+  {#cancelled; #draft; #received; #submitted};
+type PurchaseOrder__342004847 =
+  {
+    createdAt : Timestamp__301639476;
+    expectedDelivery : Timestamp__301639476;
+    id : PurchaseOrderId__128184127;
+    lineItems : [PurchaseLineItem__621437167];
+    status : PurchaseOrderStatus__936522262;
+    vendor : Text
+  };
+type Role__300349085 = {#admin; #finance; #manager; #sales_rep};
+type Set__532252804<T> = Set__710576254<T>;
+type Set__710576254<T> =
+  {var root : Node__92254746<T>; var size : Nat__490723111};
 type Timestamp__301639476 = Int;
-type Timestamp__384207765 = Timestamp__301639476;
-type Timestamp__813860109 = Timestamp__301639476;
 type UserId__158757552 = Principal;
-type UserId__41638867 = UserId__158757552;
-type UserId__445290797 = UserId__158757552;
-type UserId__609471970 = UserId__158757552;
-type UserId__911210446 = UserId__158757552;
-actor {
-  stable admins :
-    {var root : Node__92254746<UserId__911210446>; var size : Nat__490723111};
-  stable carts :
+actor ({
+  in admins : Set__532252804<OldUserId__580276348>;
+  in carts : Map__605269027<OldUserId__580276348, [OldCartItem__287857270]>;
+  in nextOrderIdBox : {var value : Nat};
+  in nextProductIdBox : {var value : Nat};
+  in orders : Map__605269027<OldOrderId__1043857103, OldOrder__235915581>;
+  in products :
+    Map__605269027<OldProductId__233768222, OldProduct__278484740>;
+  in seeded : Bool;
+  in userOrders :
+    Map__605269027<OldUserId__580276348,
+                    List__415060402<OldOrderId__1043857103>>;
+  in wishlists :
+    Map__605269027<OldUserId__580276348, [OldProductId__233768222]>
+}, {
+  stable activities :
     {
-      var root : Node__46230540<UserId__445290797, [CartItem__1044444615]>;
+      var root : Node__46230540<ActivityId__717761742, Activity__10496692>;
       var size : Nat__490723111
     };
-  stable nextOrderIdBox : {var value : Nat};
-  stable nextProductIdBox : {var value : Nat};
-  stable orders :
+  stable bootstrapAdmin : {var value : ?UserId__158757552};
+  stable contacts :
     {
-      var root : Node__46230540<OrderId__521176343, Order__141779993>;
+      var root : Node__46230540<ContactId__836243698, Contact__147242489>;
       var size : Nat__490723111
     };
+  stable deals :
+    {
+      var root : Node__46230540<DealId__471204457, Deal__868150648>;
+      var size : Nat__490723111
+    };
+  stable invoices :
+    {
+      var root : Node__46230540<InvoiceId__379764329, Invoice__959688923>;
+      var size : Nat__490723111
+    };
+  stable nextActivityId : {var value : Nat};
+  stable nextContactId : {var value : Nat};
+  stable nextDealId : {var value : Nat};
+  stable nextInvoiceId : {var value : Nat};
+  stable nextProductId : {var value : Nat};
+  stable nextPurchaseOrderId : {var value : Nat};
   stable products :
     {
-      var root : Node__46230540<ProductId__324763372, Product__389207432>;
+      var root : Node__46230540<ProductId__127144563, Product__711661123>;
       var size : Nat__490723111
     };
-  stable var seeded : Bool;
-  stable userOrders :
+  stable purchaseOrders :
     {
       var root :
-        Node__46230540<UserId__41638867, List__415060402<OrderId__521176343>>;
+        Node__46230540<PurchaseOrderId__128184127, PurchaseOrder__342004847>;
       var size : Nat__490723111
     };
-  stable wishlists :
+  stable roles :
     {
-      var root : Node__46230540<UserId__609471970, [ProductId__490034520]>;
+      var root : Node__46230540<UserId__158757552, Role__300349085>;
       var size : Nat__490723111
     }
-};
+}) ;

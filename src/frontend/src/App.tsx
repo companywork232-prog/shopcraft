@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
 import {
+  Navigate,
   Outlet,
   RouterProvider,
   createRootRoute,
@@ -10,121 +11,205 @@ import {
 import { Suspense, lazy } from "react";
 import { Layout } from "./components/Layout";
 import { AuthProvider } from "./hooks/use-auth";
-import { CartProvider } from "./hooks/use-cart";
-import HomePage from "./pages/HomePage";
+import { useAuth } from "./hooks/use-auth";
+import { Role } from "./types";
 
-// Lazy-loaded pages (written by page-task agents)
-const CatalogPage = lazy(() => import("./pages/CatalogPage"));
-const ProductDetailPage = lazy(() => import("./pages/ProductDetailPage"));
-const CartPage = lazy(() => import("./pages/CartPage"));
-const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
-const OrdersPage = lazy(() => import("./pages/OrdersPage"));
-const AccountPage = lazy(() => import("./pages/AccountPage"));
+// Lazy-loaded pages
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const ContactsPage = lazy(() => import("./pages/ContactsPage"));
+const ContactDetailPage = lazy(() => import("./pages/ContactDetailPage"));
+const DealsPage = lazy(() => import("./pages/DealsPage"));
+const ActivitiesPage = lazy(() => import("./pages/ActivitiesPage"));
+const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const PurchaseOrdersPage = lazy(() => import("./pages/PurchaseOrdersPage"));
+const InvoicesPage = lazy(() => import("./pages/InvoicesPage"));
+const FinancialsPage = lazy(() => import("./pages/FinancialsPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
-const AdminProductsPage = lazy(() => import("./pages/AdminProductsPage"));
-const AdminOrdersPage = lazy(() => import("./pages/AdminOrdersPage"));
 
 function PageFallback() {
   return (
-    <div className="flex flex-col gap-4 p-8 max-w-7xl mx-auto w-full">
-      <Skeleton className="h-8 w-64" />
-      <Skeleton className="h-4 w-full max-w-md" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mt-4">
-        {Array.from({ length: 8 }, (_, i) => `page-skel-${i}`).map((k) => (
-          <Skeleton key={k} className="aspect-[4/3] rounded-xl" />
+    <div className="p-8 space-y-4 max-w-5xl mx-auto">
+      <Skeleton className="h-8 w-56" />
+      <Skeleton className="h-4 w-80" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+        {Array.from({ length: 4 }, (_, i) => `kpi-${i}`).map((k) => (
+          <Skeleton key={k} className="h-32 rounded-xl" />
         ))}
       </div>
+      <Skeleton className="h-64 rounded-xl mt-4" />
     </div>
   );
 }
 
-// Route tree
+// ─── RBAC Guards ─────────────────────────────────────────────────────────────
+
+const ADMIN_ROLES: Role[] = [Role.admin];
+const ERP_ROLES: Role[] = [Role.admin, Role.manager, Role.finance];
+const CRM_ROLES: Role[] = [Role.admin, Role.manager, Role.sales_rep];
+
+function RoleGuard({
+  allowed,
+  children,
+}: {
+  allowed: Role[];
+  children: React.ReactNode;
+}) {
+  const { role, isRoleLoading, isAuthenticated } = useAuth();
+
+  // While loading, show skeleton to avoid flash redirect
+  if (isRoleLoading) return <PageFallback />;
+
+  // Not authenticated: redirect to dashboard (will prompt login)
+  if (!isAuthenticated) return <Navigate to="/dashboard" />;
+
+  // No role assigned yet — let through; backend will enforce
+  if (role === null || role === undefined) return <>{children}</>;
+
+  // Role not in allowed list → redirect to dashboard
+  if (!allowed.includes(role)) return <Navigate to="/dashboard" />;
+
+  return <>{children}</>;
+}
+
+// ─── Root Route ───────────────────────────────────────────────────────────────
+
 const rootRoute = createRootRoute({
   component: () => (
     <AuthProvider>
-      <CartProvider>
-        <Layout>
-          <Suspense fallback={<PageFallback />}>
-            <Outlet />
-          </Suspense>
-        </Layout>
-        <Toaster richColors position="top-right" />
-      </CartProvider>
+      <Layout>
+        <Suspense fallback={<PageFallback />}>
+          <Outlet />
+        </Suspense>
+      </Layout>
+      <Toaster richColors position="top-right" />
     </AuthProvider>
   ),
 });
 
-const homeRoute = createRoute({
+// ─── Dashboard routes (public) ────────────────────────────────────────────────
+
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: HomePage,
+  component: () => <DashboardPage />,
 });
 
-const catalogRoute = createRoute({
+const dashboardAliasRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/catalog",
-  component: () => <CatalogPage />,
+  path: "/dashboard",
+  component: () => <DashboardPage />,
 });
 
-const productDetailRoute = createRoute({
+// ─── CRM routes (admin | manager | sales_rep) ─────────────────────────────────
+
+const contactsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/products/$id",
-  component: () => <ProductDetailPage />,
+  path: "/crm/contacts",
+  component: () => (
+    <RoleGuard allowed={CRM_ROLES}>
+      <ContactsPage />
+    </RoleGuard>
+  ),
 });
 
-const cartRoute = createRoute({
+const contactDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/cart",
-  component: () => <CartPage />,
+  path: "/crm/contacts/$id",
+  component: () => (
+    <RoleGuard allowed={CRM_ROLES}>
+      <ContactDetailPage />
+    </RoleGuard>
+  ),
 });
 
-const checkoutRoute = createRoute({
+const dealsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/checkout",
-  component: () => <CheckoutPage />,
+  path: "/crm/deals",
+  component: () => (
+    <RoleGuard allowed={CRM_ROLES}>
+      <DealsPage />
+    </RoleGuard>
+  ),
 });
 
-const ordersRoute = createRoute({
+const activitiesRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/orders",
-  component: () => <OrdersPage />,
+  path: "/crm/activities",
+  component: () => (
+    <RoleGuard allowed={CRM_ROLES}>
+      <ActivitiesPage />
+    </RoleGuard>
+  ),
 });
 
-const accountRoute = createRoute({
+// ─── ERP routes (admin | manager | finance) ───────────────────────────────────
+
+const productsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/account",
-  component: () => <AccountPage />,
+  path: "/erp/products",
+  component: () => (
+    <RoleGuard allowed={ERP_ROLES}>
+      <ProductsPage />
+    </RoleGuard>
+  ),
 });
+
+const purchaseOrdersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/erp/purchase-orders",
+  component: () => (
+    <RoleGuard allowed={ERP_ROLES}>
+      <PurchaseOrdersPage />
+    </RoleGuard>
+  ),
+});
+
+const invoicesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/erp/invoices",
+  component: () => (
+    <RoleGuard allowed={ERP_ROLES}>
+      <InvoicesPage />
+    </RoleGuard>
+  ),
+});
+
+const financialsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/erp/financials",
+  component: () => (
+    <RoleGuard allowed={ERP_ROLES}>
+      <FinancialsPage />
+    </RoleGuard>
+  ),
+});
+
+// ─── Admin routes (admin only) ────────────────────────────────────────────────
 
 const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
-  component: () => <AdminPage />,
+  component: () => (
+    <RoleGuard allowed={ADMIN_ROLES}>
+      <AdminPage />
+    </RoleGuard>
+  ),
 });
 
-const adminProductsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/products",
-  component: () => <AdminProductsPage />,
-});
-
-const adminOrdersRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/orders",
-  component: () => <AdminOrdersPage />,
-});
+// ─── Router ───────────────────────────────────────────────────────────────────
 
 const routeTree = rootRoute.addChildren([
-  homeRoute,
-  catalogRoute,
-  productDetailRoute,
-  cartRoute,
-  checkoutRoute,
-  ordersRoute,
-  accountRoute,
+  dashboardRoute,
+  dashboardAliasRoute,
+  contactsRoute,
+  contactDetailRoute,
+  dealsRoute,
+  activitiesRoute,
+  productsRoute,
+  purchaseOrdersRoute,
+  invoicesRoute,
+  financialsRoute,
   adminRoute,
-  adminProductsRoute,
-  adminOrdersRoute,
 ]);
 
 const router = createRouter({ routeTree });

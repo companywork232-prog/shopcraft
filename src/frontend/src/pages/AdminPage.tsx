@@ -1,333 +1,284 @@
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Link } from "@tanstack/react-router";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  AlertTriangle,
-  ArrowRight,
-  BarChart3,
-  ClipboardList,
-  DollarSign,
-  Package,
-  ShoppingBag,
-  TrendingUp,
-} from "lucide-react";
-import { OrderStatusBadge } from "../components/OrderStatusBadge";
-import { formatPrice } from "../components/ProductCard";
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Principal } from "@icp-sdk/core/principal";
+import { Settings, ShieldCheck, UserPlus, X } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { PageLoader } from "../components/LoadingSpinner";
+import { PageHeader } from "../components/PageHeader";
 import { useAuth } from "../hooks/use-auth";
 import {
-  useAdminListOrders,
-  useIsAdmin,
-  useListProducts,
+  useAssignRole,
+  useBootstrapFirstAdmin,
+  useListUserRoles,
+  useRemoveRole,
 } from "../hooks/use-backend";
+import { Role } from "../types";
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  sub,
-  loading,
-}: {
-  label: string;
-  value: string;
-  icon: React.ElementType;
-  sub?: string;
-  loading?: boolean;
-}) {
-  return (
-    <Card className="p-6 flex flex-col gap-4 bg-card border-border shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">
-          {label}
-        </span>
-        <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center">
-          <Icon className="size-5 text-primary" />
-        </div>
-      </div>
-      {loading ? (
-        <Skeleton className="h-8 w-28" />
-      ) : (
-        <div>
-          <p className="text-3xl font-display font-bold text-foreground">
-            {value}
-          </p>
-          {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-        </div>
-      )}
-    </Card>
-  );
-}
+const ROLE_OPTIONS = [
+  {
+    value: Role.admin,
+    label: "Admin",
+    description: "Full access to all features",
+  },
+  {
+    value: Role.manager,
+    label: "Manager",
+    description: "CRM + ERP access, no admin panel",
+  },
+  { value: Role.sales_rep, label: "Sales Rep", description: "CRM access only" },
+  { value: Role.finance, label: "Finance", description: "ERP access only" },
+];
+
+const ROLE_COLORS: Record<Role, string> = {
+  [Role.admin]: "bg-destructive/10 text-destructive border-destructive/20",
+  [Role.manager]: "bg-primary/10 text-primary border-primary/20",
+  [Role.sales_rep]:
+    "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800/40",
+  [Role.finance]:
+    "bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/40",
+};
 
 export default function AdminPage() {
-  const { isAuthenticated, principal } = useAuth();
-  const principalStr = principal?.toText();
+  const { role: myRole } = useAuth();
+  const { data: userRoles = [], isLoading } = useListUserRoles();
+  const assignRole = useAssignRole();
+  const removeRole = useRemoveRole();
+  const bootstrapAdmin = useBootstrapFirstAdmin();
+  const [newPrincipal, setNewPrincipal] = useState("");
+  const [newRole, setNewRole] = useState<Role>(Role.sales_rep);
 
-  const { data: isAdmin, isLoading: isAdminLoading } = useIsAdmin(principalStr);
-  const { data: productData, isLoading: prodLoading } = useListProducts({
-    pageSize: 100,
-  });
-  const { data: orders = [], isLoading: ordersLoading } = useAdminListOrders(
-    0,
-    100,
-  );
+  const handleAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPrincipal.trim()) {
+      toast.error("Enter a principal ID");
+      return;
+    }
+    try {
+      const userId = Principal.fromText(newPrincipal.trim());
+      await assignRole.mutateAsync({ userId, role: newRole });
+      toast.success("Role assigned successfully");
+      setNewPrincipal("");
+    } catch {
+      toast.error("Failed to assign role — check the principal ID format");
+    }
+  };
 
-  const totalProducts = productData?.total ?? 0n;
-  const totalOrders = BigInt(orders.length);
-  const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0n);
-  const pendingOrders = orders.filter((o) => o.status === "pending").length;
+  const handleRemove = async (userId: Principal) => {
+    try {
+      await removeRole.mutateAsync(userId);
+      toast.success("Role removed");
+    } catch {
+      toast.error("Failed to remove role");
+    }
+  };
 
-  const recentOrders = [...orders]
-    .sort((a, b) => Number(b.createdAt - a.createdAt))
-    .slice(0, 5);
+  const handleBootstrap = async () => {
+    try {
+      await bootstrapAdmin.mutateAsync();
+      toast.success("You are now the first admin!");
+    } catch {
+      toast.error("Bootstrap failed — admin may already exist");
+    }
+  };
 
-  if (!isAuthenticated) {
-    return (
-      <div
-        className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8"
-        data-ocid="admin.error_state"
-      >
-        <div className="size-16 rounded-full bg-destructive/10 flex items-center justify-center">
-          <AlertTriangle className="size-8 text-destructive" />
-        </div>
-        <div className="text-center">
-          <h2 className="font-display text-2xl font-bold text-foreground">
-            Sign In Required
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            Please log in to access the admin dashboard.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (isAdminLoading) {
-    return (
-      <div
-        className="flex items-center justify-center min-h-[60vh]"
-        data-ocid="admin.loading_state"
-      >
-        <div className="flex flex-col items-center gap-4">
-          <Skeleton className="size-16 rounded-full" />
-          <Skeleton className="h-4 w-40" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div
-        className="flex flex-col items-center justify-center min-h-[60vh] gap-6 p-8"
-        data-ocid="admin.error_state"
-      >
-        <div className="size-16 rounded-full bg-destructive/10 flex items-center justify-center">
-          <AlertTriangle className="size-8 text-destructive" />
-        </div>
-        <div className="text-center">
-          <h2 className="font-display text-2xl font-bold text-foreground">
-            Access Denied
-          </h2>
-          <p className="text-muted-foreground mt-2 max-w-sm">
-            You don&apos;t have admin privileges. Contact an administrator if
-            you believe this is an error.
-          </p>
-        </div>
-        <Button asChild variant="outline">
-          <Link to="/" data-ocid="admin.link">
-            Back to Store
-          </Link>
-        </Button>
-      </div>
-    );
-  }
+  if (isLoading) return <PageLoader label="Loading admin panel…" />;
 
   return (
-    <div
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10"
-      data-ocid="admin.page"
-    >
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center">
-            <BarChart3 className="size-5 text-primary" />
-          </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">
-            Admin Dashboard
-          </h1>
-        </div>
-        <p className="text-muted-foreground ml-12">
-          Overview of your store&apos;s performance and quick actions.
-        </p>
-      </div>
+    <div className="p-6 max-w-5xl mx-auto space-y-6" data-ocid="admin.page">
+      <PageHeader
+        title="Admin Panel"
+        description="Manage user roles and system settings"
+      />
 
-      {/* Stats Grid */}
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-10"
-        data-ocid="admin.section"
-      >
-        <StatCard
-          label="Total Products"
-          value={String(totalProducts)}
-          icon={Package}
-          sub="active listings"
-          loading={prodLoading}
-        />
-        <StatCard
-          label="Total Orders"
-          value={String(totalOrders)}
-          icon={ShoppingBag}
-          sub={`${pendingOrders} pending`}
-          loading={ordersLoading}
-        />
-        <StatCard
-          label="Total Revenue"
-          value={formatPrice(totalRevenue)}
-          icon={DollarSign}
-          sub="all time"
-          loading={ordersLoading}
-        />
-        <StatCard
-          label="Sold Items"
-          value={orders
-            .reduce(
-              (sum, o) =>
-                sum + o.items.reduce((s, i) => s + Number(i.quantity), 0),
-              0,
-            )
-            .toString()}
-          icon={TrendingUp}
-          sub="units sold"
-          loading={ordersLoading}
-        />
-      </div>
-
-      {/* Quick Navigation */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-10">
-        <Link to="/admin/products" data-ocid="admin.link">
-          <Card className="p-6 flex items-center justify-between group hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer bg-card border-border">
-            <div className="flex items-center gap-4">
-              <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Package className="size-6 text-primary" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">
-                  Manage Products
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Add, edit, and remove products
-                </p>
-              </div>
+      {/* Bootstrap card shown when no roles exist */}
+      {userRoles.length === 0 && (
+        <Card
+          className="border-amber-300 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-950/10 shadow-subtle"
+          data-ocid="admin.bootstrap.card"
+        >
+          <CardContent className="p-6 flex items-start gap-4">
+            <div className="size-10 rounded-xl bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
+              <ShieldCheck className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <ArrowRight className="size-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
-          </Card>
-        </Link>
-
-        <Link to="/admin/orders" data-ocid="admin.link">
-          <Card className="p-6 flex items-center justify-between group hover:border-primary/50 hover:shadow-md transition-all duration-200 cursor-pointer bg-card border-border">
-            <div className="flex items-center gap-4">
-              <div className="size-12 rounded-xl bg-accent/10 flex items-center justify-center">
-                <ClipboardList className="size-6 text-accent" />
-              </div>
-              <div>
-                <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">
-                  Manage Orders
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  View and update order statuses
-                </p>
-              </div>
+            <div className="flex-1">
+              <h3 className="font-display font-semibold text-foreground mb-1">
+                First-time Setup
+              </h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                No admin roles exist yet. Bootstrap yourself as the first admin
+                to get started.
+              </p>
+              <Button
+                onClick={handleBootstrap}
+                disabled={bootstrapAdmin.isPending}
+                data-ocid="admin.bootstrap.button"
+              >
+                {bootstrapAdmin.isPending
+                  ? "Bootstrapping…"
+                  : "Bootstrap as Admin"}
+              </Button>
             </div>
-            <ArrowRight className="size-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
-          </Card>
-        </Link>
-      </div>
+          </CardContent>
+        </Card>
+      )}
 
-      {/* Recent Orders */}
-      <div data-ocid="admin.section">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg font-semibold text-foreground">
-            Recent Orders
-          </h2>
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/admin/orders" data-ocid="admin.link">
-              View all <ArrowRight className="size-3.5 ml-1" />
-            </Link>
-          </Button>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Assign Role Form */}
+        <Card className="shadow-subtle" data-ocid="admin.assign_role.card">
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-base flex items-center gap-2">
+              <UserPlus className="size-4 text-muted-foreground" />
+              Assign Role
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAssign} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="ar-principal">Principal ID *</Label>
+                <Input
+                  id="ar-principal"
+                  value={newPrincipal}
+                  onChange={(e) => setNewPrincipal(e.target.value)}
+                  placeholder="aaaaa-bbbbb-ccccc-ddddd-eee"
+                  className="font-mono text-xs"
+                  data-ocid="admin.principal.input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Role</Label>
+                <Select
+                  value={newRole}
+                  onValueChange={(v) => setNewRole(v as Role)}
+                >
+                  <SelectTrigger data-ocid="admin.role.select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLE_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        <div>
+                          <p className="font-medium">{o.label}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {o.description}
+                          </p>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={assignRole.isPending}
+                data-ocid="admin.assign_button"
+              >
+                {assignRole.isPending ? "Assigning…" : "Assign Role"}
+              </Button>
+            </form>
 
-        {ordersLoading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-14 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : recentOrders.length === 0 ? (
-          <Card
-            className="p-8 text-center text-muted-foreground"
-            data-ocid="admin.empty_state"
-          >
-            No orders yet.
-          </Card>
-        ) : (
-          <Card className="border-border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/40 border-b border-border">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
-                      Order ID
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
-                      Items
-                    </th>
-                    <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
-                      Total
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentOrders.map((order, idx) => (
-                    <tr
-                      key={order.id.toString()}
-                      className="border-b border-border/50 hover:bg-muted/20 transition-colors"
-                      data-ocid={`admin.recent_orders.item.${idx + 1}`}
+            {/* Role reference */}
+            <div className="mt-6 pt-4 border-t border-border space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Role Reference
+              </p>
+              {ROLE_OPTIONS.map((r) => (
+                <div key={r.value} className="flex items-start gap-2">
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border shrink-0 ${ROLE_COLORS[r.value]}`}
+                  >
+                    {r.label}
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    {r.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* User Roles Table */}
+        <Card
+          className="lg:col-span-2 shadow-subtle"
+          data-ocid="admin.users.card"
+        >
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-base flex items-center gap-2">
+              <Settings className="size-4 text-muted-foreground" />
+              Current User Roles ({userRoles.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {userRoles.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-10">
+                No roles assigned yet.
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40">
+                    <TableHead>Principal ID</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {userRoles.map((ur, i) => (
+                    <TableRow
+                      key={ur.userId.toText()}
+                      data-ocid={`admin.user.item.${i + 1}`}
                     >
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
-                        #{order.id.toString().padStart(6, "0")}
-                      </td>
-                      <td className="px-4 py-3 text-foreground">
-                        {order.items.reduce(
-                          (s, i) => s + Number(i.quantity),
-                          0,
-                        )}{" "}
-                        items
-                      </td>
-                      <td className="px-4 py-3 text-right font-semibold text-foreground">
-                        {formatPrice(order.total)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <OrderStatusBadge status={order.status} />
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(
-                          Number(order.createdAt) / 1_000_000,
-                        ).toLocaleDateString()}
-                      </td>
-                    </tr>
+                      <TableCell className="font-mono text-xs text-muted-foreground max-w-[200px] truncate">
+                        {ur.userId.toText()}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${ROLE_COLORS[ur.role]}`}
+                        >
+                          {ur.role}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {myRole === Role.admin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleRemove(ur.userId)}
+                            data-ocid={`admin.remove_role.button.${i + 1}`}
+                            aria-label="Remove role"
+                          >
+                            <X className="size-3.5" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-        )}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

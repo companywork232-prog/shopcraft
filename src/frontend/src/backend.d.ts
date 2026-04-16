@@ -7,119 +7,232 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface CreateOrderArgs {
-    paymentIntent: string;
-    shippingAddress: ShippingAddress;
-}
-export interface ProductInput {
-    title: string;
-    description: string;
-    category: string;
-    inventoryCount: bigint;
-    price: bigint;
-    images: Array<string>;
+export interface FinancialSummary {
+    grossMargin: bigint;
+    totalExpenses: bigint;
+    outstandingReceivables: bigint;
+    cashBalance: bigint;
+    inventoryValue: bigint;
+    totalRevenue: bigint;
 }
 export type Timestamp = bigint;
-export interface ShippingAddress {
-    zip: string;
-    street: string;
-    country: string;
-    city: string;
+export interface Contact {
+    id: ContactId;
+    status: ContactStatus;
     name: string;
-    state: string;
-}
-export interface OrderItem {
-    title: string;
-    productId: ProductId;
-    quantity: bigint;
-    price: bigint;
-}
-export interface ListProductsArgs {
-    sortBy: SortOption;
-    page: bigint;
-    pageSize: bigint;
-    search?: string;
-    maxPrice?: bigint;
-    category?: string;
-    minPrice?: bigint;
-}
-export interface Order {
-    id: OrderId;
-    status: OrderStatus;
-    total: bigint;
-    userId: UserId;
     createdAt: Timestamp;
-    paymentIntent: string;
-    shippingAddress: ShippingAddress;
-    items: Array<OrderItem>;
+    email: string;
+    company: string;
+    notes: string;
+    phone: string;
+}
+export type PurchaseOrderId = bigint;
+export interface UserRole {
+    userId: UserId;
+    role: Role;
+}
+export type EntityId = bigint;
+export interface Invoice {
+    id: InvoiceId;
+    status: InvoiceStatus;
+    lineItems: Array<InvoiceLineItem>;
+    dueDate: Timestamp;
+    dealId?: EntityId;
+    invoiceNumber: string;
+    contactId: EntityId;
+    issuedAt: Timestamp;
+    paidAt?: Timestamp;
 }
 export type UserId = Principal;
-export interface Wishlist {
-    productIds: Array<ProductId>;
-    userId: UserId;
+export interface Activity {
+    id: ActivityId;
+    completedAt?: Timestamp;
+    activityType: ActivityType;
+    createdAt: Timestamp;
+    createdBy: UserId;
+    dueDate: Timestamp;
+    description: string;
+    dealId?: DealId;
+    contactId: ContactId;
 }
-export interface Cart {
-    userId: UserId;
-    items: Array<CartItem>;
+export type ActivityId = bigint;
+export interface Deal {
+    id: DealId;
+    probability: bigint;
+    closeDate: Timestamp;
+    title: string;
+    value: bigint;
+    createdAt: Timestamp;
+    stage: DealStage;
+    notes: string;
+    contactId: ContactId;
 }
-export type ProductId = bigint;
-export interface CartItem {
+export type InvoiceId = bigint;
+export interface PurchaseLineItem {
     productId: ProductId;
     quantity: bigint;
+    unitCost: bigint;
 }
-export interface PageResult {
-    total: bigint;
-    page: bigint;
-    pageSize: bigint;
-    items: Array<Product>;
+export type ProductId = bigint;
+export interface PurchaseOrder {
+    id: PurchaseOrderId;
+    status: PurchaseOrderStatus;
+    lineItems: Array<PurchaseLineItem>;
+    createdAt: Timestamp;
+    vendor: string;
+    expectedDelivery: Timestamp;
+}
+export type ContactId = bigint;
+export type DealId = bigint;
+export interface InvoiceLineItem {
+    description: string;
+    quantity: bigint;
+    unitPrice: bigint;
 }
 export interface Product {
     id: ProductId;
-    title: string;
+    sku: string;
+    stockQuantity: bigint;
+    name: string;
     createdAt: Timestamp;
-    description: string;
+    sellingPrice: bigint;
     category: string;
-    inventoryCount: bigint;
-    price: bigint;
-    soldCount: bigint;
-    images: Array<string>;
+    costPrice: bigint;
+    reorderThreshold: bigint;
 }
-export type OrderId = bigint;
-export enum OrderStatus {
-    shipped = "shipped",
+export enum ActivityType {
+    call = "call",
+    task = "task",
+    email = "email",
+    meeting = "meeting"
+}
+export enum ContactStatus {
+    customer = "customer",
+    lead = "lead",
+    prospect = "prospect"
+}
+export enum DealStage {
+    closed_won = "closed_won",
+    discovery = "discovery",
+    prospect = "prospect",
+    closed_lost = "closed_lost",
+    proposal = "proposal",
+    negotiation = "negotiation"
+}
+export enum InvoiceStatus {
     cancelled = "cancelled",
-    pending = "pending",
     paid = "paid",
-    delivered = "delivered"
+    sent = "sent",
+    overdue = "overdue",
+    draft = "draft"
 }
-export enum SortOption {
-    bestSelling = "bestSelling",
-    newest = "newest",
-    priceDesc = "priceDesc",
-    priceAsc = "priceAsc"
+export enum PurchaseOrderStatus {
+    cancelled = "cancelled",
+    submitted = "submitted",
+    draft = "draft",
+    received = "received"
+}
+export enum Role {
+    manager = "manager",
+    admin = "admin",
+    finance = "finance",
+    sales_rep = "sales_rep"
 }
 export interface backendInterface {
-    addAdmin(newAdmin: UserId): Promise<void>;
-    addToCart(productId: ProductId, quantity: bigint): Promise<void>;
-    addToWishlist(productId: ProductId): Promise<void>;
-    adminListOrders(page: bigint, pageSize: bigint): Promise<Array<Order>>;
-    adminUpdateOrderStatus(id: OrderId, status: OrderStatus): Promise<Order | null>;
-    clearCart(): Promise<void>;
-    createOrder(args: CreateOrderArgs): Promise<Order>;
-    createProduct(input: ProductInput): Promise<Product>;
+    adjustStock(id: ProductId, delta: bigint): Promise<Product | null>;
+    assignRole(userId: UserId, role: Role): Promise<void>;
+    bootstrapFirstAdmin(): Promise<void>;
+    completeActivity(id: ActivityId, completedAt: Timestamp): Promise<{
+        __kind__: "ok";
+        ok: Activity | null;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    createActivity(activityType: ActivityType, description: string, contactId: ContactId, dealId: DealId | null, dueDate: Timestamp): Promise<{
+        __kind__: "ok";
+        ok: Activity;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    createContact(name: string, email: string, phone: string, company: string, status: ContactStatus, notes: string): Promise<{
+        __kind__: "ok";
+        ok: Contact;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    createDeal(title: string, value: bigint, stage: DealStage, contactId: ContactId, probability: bigint, closeDate: Timestamp, notes: string): Promise<{
+        __kind__: "ok";
+        ok: Deal;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    createInvoice(contactId: EntityId, dealId: EntityId | null, lineItems: Array<InvoiceLineItem>, dueDate: Timestamp): Promise<Invoice>;
+    createProduct(name: string, sku: string, costPrice: bigint, sellingPrice: bigint, stockQuantity: bigint, reorderThreshold: bigint, category: string): Promise<Product>;
+    createPurchaseOrder(vendor: string, lineItems: Array<PurchaseLineItem>, expectedDelivery: Timestamp): Promise<PurchaseOrder>;
+    deleteActivity(id: ActivityId): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    deleteContact(id: ContactId): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    deleteDeal(id: DealId): Promise<{
+        __kind__: "ok";
+        ok: boolean;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    deleteInvoice(id: InvoiceId): Promise<boolean>;
     deleteProduct(id: ProductId): Promise<boolean>;
-    getCart(): Promise<Cart>;
-    getMyOrders(): Promise<Array<Order>>;
-    getOrder(id: OrderId): Promise<Order | null>;
+    filterActivities(contactIdFilter: ContactId | null, dealIdFilter: DealId | null): Promise<Array<Activity>>;
+    filterDeals(stageFilter: DealStage | null, contactIdFilter: ContactId | null): Promise<Array<Deal>>;
+    getActivity(id: ActivityId): Promise<Activity | null>;
+    getContact(id: ContactId): Promise<Contact | null>;
+    getDeal(id: DealId): Promise<Deal | null>;
+    getFinancialSummary(): Promise<FinancialSummary>;
+    getInvoice(id: InvoiceId): Promise<Invoice | null>;
+    getLowStockProducts(): Promise<Array<Product>>;
+    getMyRole(): Promise<Role | null>;
     getProduct(id: ProductId): Promise<Product | null>;
-    getWishlist(): Promise<Wishlist>;
-    initializeAdmin(): Promise<void>;
-    isAdmin(who: UserId): Promise<boolean>;
-    listProducts(args: ListProductsArgs): Promise<PageResult>;
-    removeAdmin(target: UserId): Promise<void>;
-    removeFromCart(productId: ProductId): Promise<void>;
-    removeFromWishlist(productId: ProductId): Promise<void>;
-    searchProducts(term: string, page: bigint, pageSize: bigint): Promise<PageResult>;
-    updateCartQuantity(productId: ProductId, quantity: bigint): Promise<void>;
-    updateProduct(id: ProductId, input: ProductInput): Promise<Product | null>;
+    getPurchaseOrder(id: PurchaseOrderId): Promise<PurchaseOrder | null>;
+    getRevenueByPeriod(months: bigint): Promise<Array<[string, bigint]>>;
+    listActivities(): Promise<Array<Activity>>;
+    listContacts(): Promise<Array<Contact>>;
+    listDeals(): Promise<Array<Deal>>;
+    listInvoices(): Promise<Array<Invoice>>;
+    listProducts(): Promise<Array<Product>>;
+    listPurchaseOrders(): Promise<Array<PurchaseOrder>>;
+    listUserRoles(): Promise<Array<UserRole>>;
+    removeRole(userId: UserId): Promise<void>;
+    searchContacts(nameFilter: string | null, emailFilter: string | null, companyFilter: string | null, statusFilter: ContactStatus | null): Promise<Array<Contact>>;
+    searchProducts(nameFilter: string | null, categoryFilter: string | null, lowStockOnly: boolean): Promise<Array<Product>>;
+    updateContact(id: ContactId, name: string, email: string, phone: string, company: string, status: ContactStatus, notes: string): Promise<{
+        __kind__: "ok";
+        ok: Contact | null;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    updateDeal(id: DealId, title: string, value: bigint, stage: DealStage, contactId: ContactId, probability: bigint, closeDate: Timestamp, notes: string): Promise<{
+        __kind__: "ok";
+        ok: Deal | null;
+    } | {
+        __kind__: "err";
+        err: string;
+    }>;
+    updateInvoiceStatus(id: InvoiceId, status: InvoiceStatus, paidAt: Timestamp | null): Promise<Invoice | null>;
+    updateProduct(id: ProductId, name: string, sku: string, costPrice: bigint, sellingPrice: bigint, stockQuantity: bigint, reorderThreshold: bigint, category: string): Promise<Product | null>;
+    updatePurchaseOrderStatus(id: PurchaseOrderId, status: PurchaseOrderStatus): Promise<PurchaseOrder | null>;
 }

@@ -1,181 +1,314 @@
 import { useActor } from "@caffeineai/core-infrastructure";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createActor } from "../backend";
-import type { SortOption as BackendSortOption } from "../backend";
-import { OrderStatus } from "../backend";
-import type { Order, Product } from "../backend.d";
-
-// ─── Re-export for convenience ──────────────────────────────────────────────
-export { OrderStatus };
-export type { Product, Order };
+import type {
+  ActivityType,
+  ContactId,
+  ContactStatus,
+  DealId,
+  DealStage,
+  EntityId,
+  InvoiceLineItem,
+  InvoiceStatus,
+  ProductId,
+  PurchaseLineItem,
+  PurchaseOrderId,
+  PurchaseOrderStatus,
+  Role,
+  Timestamp,
+  UserId,
+} from "../backend";
 
 // ─── Shared actor hook ───────────────────────────────────────────────────────
 function useBackendActor() {
   return useActor(createActor);
 }
 
-// ─── Queries ─────────────────────────────────────────────────────────────────
+// ─── CRM: Contacts ──────────────────────────────────────────────────────────
 
-export function useListProducts(args: {
-  page?: number;
-  pageSize?: number;
-  category?: string;
-  minPrice?: number;
-  maxPrice?: number;
-  sortBy?: BackendSortOption;
-  search?: string;
-}) {
+export function useListContacts() {
   const { actor, isFetching } = useBackendActor();
   return useQuery({
-    queryKey: ["products", args],
+    queryKey: ["contacts"],
     queryFn: async () => {
-      if (!actor) return { items: [], total: 0n, page: 0n, pageSize: 12n };
-      return actor.listProducts({
-        page: BigInt(args.page ?? 0),
-        pageSize: BigInt(args.pageSize ?? 12),
-        sortBy: (args.sortBy ?? "newest") as BackendSortOption,
-        category: args.category,
-        minPrice:
-          args.minPrice !== undefined ? BigInt(args.minPrice) : undefined,
-        maxPrice:
-          args.maxPrice !== undefined ? BigInt(args.maxPrice) : undefined,
-        search: args.search,
-      });
+      if (!actor) return [];
+      return actor.listContacts();
     },
     enabled: !!actor && !isFetching,
     staleTime: 30_000,
   });
 }
 
-export function useGetProduct(id: bigint | null) {
+export function useGetContact(id: bigint | null) {
   const { actor, isFetching } = useBackendActor();
   return useQuery({
-    queryKey: ["product", id?.toString()],
+    queryKey: ["contact", id?.toString()],
     queryFn: async () => {
       if (!actor || id === null) return null;
-      return actor.getProduct(id);
+      return actor.getContact(id);
     },
     enabled: !!actor && !isFetching && id !== null,
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
 }
 
-export function useSearchProducts(term: string, page = 0, pageSize = 12) {
-  const { actor, isFetching } = useBackendActor();
-  return useQuery({
-    queryKey: ["search", term, page, pageSize],
-    queryFn: async () => {
-      if (!actor || !term)
-        return { items: [], total: 0n, page: 0n, pageSize: BigInt(pageSize) };
-      return actor.searchProducts(term, BigInt(page), BigInt(pageSize));
+export function useCreateContact() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      name: string;
+      email: string;
+      phone: string;
+      company: string;
+      status: ContactStatus;
+      notes: string;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.createContact(
+        args.name,
+        args.email,
+        args.phone,
+        args.company,
+        args.status,
+        args.notes,
+      );
     },
-    enabled: !!actor && !isFetching && term.length > 0,
-    staleTime: 15_000,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
   });
 }
 
-export function useGetCart() {
-  const { actor, isFetching } = useBackendActor();
-  return useQuery({
-    queryKey: ["cart"],
-    queryFn: async () => {
-      if (!actor) return null;
-      return actor.getCart();
+export function useUpdateContact() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: ContactId;
+      name: string;
+      email: string;
+      phone: string;
+      company: string;
+      status: ContactStatus;
+      notes: string;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updateContact(
+        args.id,
+        args.name,
+        args.email,
+        args.phone,
+        args.company,
+        args.status,
+        args.notes,
+      );
     },
-    enabled: !!actor && !isFetching,
-    staleTime: 10_000,
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["contact", v.id.toString()] });
+    },
   });
 }
 
-export function useGetMyOrders() {
+export function useDeleteContact() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: ContactId) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.deleteContact(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["contacts"] }),
+  });
+}
+
+// ─── CRM: Deals ─────────────────────────────────────────────────────────────
+
+export function useListDeals() {
   const { actor, isFetching } = useBackendActor();
   return useQuery({
-    queryKey: ["my-orders"],
+    queryKey: ["deals"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMyOrders();
+      return actor.listDeals();
     },
     enabled: !!actor && !isFetching,
     staleTime: 30_000,
   });
 }
 
-export function useGetWishlist() {
+export function useGetDeal(id: bigint | null) {
   const { actor, isFetching } = useBackendActor();
   return useQuery({
-    queryKey: ["wishlist"],
+    queryKey: ["deal", id?.toString()],
     queryFn: async () => {
-      if (!actor) return null;
-      return actor.getWishlist();
+      if (!actor || id === null) return null;
+      return actor.getDeal(id);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && id !== null,
   });
 }
 
-export function useIsAdmin(principal: string | undefined) {
-  const { actor, isFetching } = useBackendActor();
-  return useQuery({
-    queryKey: ["isAdmin", principal],
-    queryFn: async () => {
-      if (!actor || !principal) return false;
-      const { Principal } = await import("@icp-sdk/core/principal");
-      return actor.isAdmin(Principal.fromText(principal));
+export function useCreateDeal() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      title: string;
+      value: bigint;
+      stage: DealStage;
+      contactId: ContactId;
+      probability: bigint;
+      closeDate: Timestamp;
+      notes: string;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.createDeal(
+        args.title,
+        args.value,
+        args.stage,
+        args.contactId,
+        args.probability,
+        args.closeDate,
+        args.notes,
+      );
     },
-    enabled: !!actor && !isFetching && !!principal,
-    staleTime: 60_000,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["deals"] }),
   });
 }
 
-export function useAdminListOrders(page = 0, pageSize = 20) {
+export function useUpdateDeal() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: DealId;
+      title: string;
+      value: bigint;
+      stage: DealStage;
+      contactId: ContactId;
+      probability: bigint;
+      closeDate: Timestamp;
+      notes: string;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updateDeal(
+        args.id,
+        args.title,
+        args.value,
+        args.stage,
+        args.contactId,
+        args.probability,
+        args.closeDate,
+        args.notes,
+      );
+    },
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: ["deals"] });
+      qc.invalidateQueries({ queryKey: ["deal", v.id.toString()] });
+    },
+  });
+}
+
+export function useDeleteDeal() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: DealId) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.deleteDeal(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["deals"] }),
+  });
+}
+
+// ─── CRM: Activities ────────────────────────────────────────────────────────
+
+export function useListActivities() {
   const { actor, isFetching } = useBackendActor();
   return useQuery({
-    queryKey: ["admin-orders", page, pageSize],
+    queryKey: ["activities"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.adminListOrders(BigInt(page), BigInt(pageSize));
+      return actor.listActivities();
     },
     enabled: !!actor && !isFetching,
+    staleTime: 30_000,
   });
 }
 
-// ─── Mutations ───────────────────────────────────────────────────────────────
-
-export function useAddToCart() {
+export function useCreateActivity() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      productId,
-      quantity,
-    }: { productId: bigint; quantity: number }) => {
+    mutationFn: async (args: {
+      activityType: ActivityType;
+      description: string;
+      contactId: ContactId;
+      dealId: DealId | null;
+      dueDate: Timestamp;
+    }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.addToCart(productId, BigInt(quantity));
+      return actor.createActivity(
+        args.activityType,
+        args.description,
+        args.contactId,
+        args.dealId,
+        args.dueDate,
+      );
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
   });
 }
 
-export function useRemoveFromCart() {
+export function useCompleteActivity() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (productId: bigint) => {
+    mutationFn: async (args: { id: bigint; completedAt: Timestamp }) => {
       if (!actor) throw new Error("Not connected");
-      await actor.removeFromCart(productId);
+      return actor.completeActivity(args.id, args.completedAt);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
   });
 }
 
-export function useClearCart() {
+export function useDeleteActivity() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (id: bigint) => {
       if (!actor) throw new Error("Not connected");
-      await actor.clearCart();
+      return actor.deleteActivity(id);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["cart"] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["activities"] }),
+  });
+}
+
+// ─── ERP: Products ───────────────────────────────────────────────────────────
+
+export function useListProducts() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["products"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listProducts();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function useGetLowStockProducts() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["low-stock"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getLowStockProducts();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
   });
 }
 
@@ -183,20 +316,25 @@ export function useCreateProduct() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      title: string;
-      description: string;
+    mutationFn: async (args: {
+      name: string;
+      sku: string;
+      costPrice: bigint;
+      sellingPrice: bigint;
+      stockQuantity: bigint;
+      reorderThreshold: bigint;
       category: string;
-      inventoryCount: number;
-      price: number;
-      images: string[];
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.createProduct({
-        ...input,
-        inventoryCount: BigInt(input.inventoryCount),
-        price: BigInt(input.price),
-      });
+      return actor.createProduct(
+        args.name,
+        args.sku,
+        args.costPrice,
+        args.sellingPrice,
+        args.stockQuantity,
+        args.reorderThreshold,
+        args.category,
+      );
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["products"] }),
   });
@@ -206,26 +344,27 @@ export function useUpdateProduct() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
-      id: bigint;
-      input: {
-        title: string;
-        description: string;
-        category: string;
-        inventoryCount: number;
-        price: number;
-        images: string[];
-      };
+    mutationFn: async (args: {
+      id: ProductId;
+      name: string;
+      sku: string;
+      costPrice: bigint;
+      sellingPrice: bigint;
+      stockQuantity: bigint;
+      reorderThreshold: bigint;
+      category: string;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.updateProduct(id, {
-        ...input,
-        inventoryCount: BigInt(input.inventoryCount),
-        price: BigInt(input.price),
-      });
+      return actor.updateProduct(
+        args.id,
+        args.name,
+        args.sku,
+        args.costPrice,
+        args.sellingPrice,
+        args.stockQuantity,
+        args.reorderThreshold,
+        args.category,
+      );
     },
     onSuccess: (_d, v) => {
       qc.invalidateQueries({ queryKey: ["products"] });
@@ -238,7 +377,7 @@ export function useDeleteProduct() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: bigint) => {
+    mutationFn: async (id: ProductId) => {
       if (!actor) throw new Error("Not connected");
       return actor.deleteProduct(id);
     },
@@ -246,63 +385,214 @@ export function useDeleteProduct() {
   });
 }
 
-export function useCreateOrder() {
+export function useAdjustStock() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { id: ProductId; delta: bigint }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.adjustStock(args.id, args.delta);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["products"] });
+      qc.invalidateQueries({ queryKey: ["low-stock"] });
+    },
+  });
+}
+
+// ─── ERP: Purchase Orders ────────────────────────────────────────────────────
+
+export function useListPurchaseOrders() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["purchase-orders"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listPurchaseOrders();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreatePurchaseOrder() {
   const { actor } = useBackendActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (args: {
-      paymentIntent: string;
-      shippingAddress: {
-        name: string;
-        street: string;
-        city: string;
-        state: string;
-        zip: string;
-        country: string;
-      };
+      vendor: string;
+      lineItems: Array<PurchaseLineItem>;
+      expectedDelivery: Timestamp;
     }) => {
       if (!actor) throw new Error("Not connected");
-      return actor.createOrder(args);
+      return actor.createPurchaseOrder(
+        args.vendor,
+        args.lineItems,
+        args.expectedDelivery,
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-orders"] }),
+  });
+}
+
+export function useUpdatePurchaseOrderStatus() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: PurchaseOrderId;
+      status: PurchaseOrderStatus;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updatePurchaseOrderStatus(args.id, args.status);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["purchase-orders"] }),
+  });
+}
+
+// ─── ERP: Invoices ───────────────────────────────────────────────────────────
+
+export function useListInvoices() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["invoices"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listInvoices();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateInvoice() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      contactId: EntityId;
+      dealId: EntityId | null;
+      lineItems: Array<InvoiceLineItem>;
+      dueDate: Timestamp;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.createInvoice(
+        args.contactId,
+        args.dealId,
+        args.lineItems,
+        args.dueDate,
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+}
+
+export function useUpdateInvoiceStatus() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: {
+      id: bigint;
+      status: InvoiceStatus;
+      paidAt: Timestamp | null;
+    }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.updateInvoiceStatus(args.id, args.status, args.paidAt);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+}
+
+export function useDeleteInvoice() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.deleteInvoice(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["invoices"] }),
+  });
+}
+
+// ─── ERP: Financials ─────────────────────────────────────────────────────────
+
+export function useGetFinancialSummary() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["financial-summary"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getFinancialSummary();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+// ─── Admin: Roles ────────────────────────────────────────────────────────────
+
+export function useGetMyRole() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["my-role"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getMyRole();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+export function useListUserRoles() {
+  const { actor, isFetching } = useBackendActor();
+  return useQuery({
+    queryKey: ["user-roles"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.listUserRoles();
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 60_000,
+  });
+}
+
+export function useAssignRole() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { userId: UserId; role: Role }) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.assignRole(args.userId, args.role);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["user-roles"] }),
+  });
+}
+
+export function useRemoveRole() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: UserId) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.removeRole(userId);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["user-roles"] }),
+  });
+}
+
+export function useBootstrapFirstAdmin() {
+  const { actor } = useBackendActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (!actor) throw new Error("Not connected");
+      return actor.bootstrapFirstAdmin();
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-orders"] });
-      qc.invalidateQueries({ queryKey: ["cart"] });
+      qc.invalidateQueries({ queryKey: ["my-role"] });
+      qc.invalidateQueries({ queryKey: ["user-roles"] });
     },
-  });
-}
-
-export function useAdminUpdateOrderStatus() {
-  const { actor } = useBackendActor();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: bigint; status: OrderStatus }) => {
-      if (!actor) throw new Error("Not connected");
-      return actor.adminUpdateOrderStatus(id, status);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["admin-orders"] }),
-  });
-}
-
-export function useAddToWishlist() {
-  const { actor } = useBackendActor();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (productId: bigint) => {
-      if (!actor) throw new Error("Not connected");
-      await actor.addToWishlist(productId);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wishlist"] }),
-  });
-}
-
-export function useRemoveFromWishlist() {
-  const { actor } = useBackendActor();
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (productId: bigint) => {
-      if (!actor) throw new Error("Not connected");
-      await actor.removeFromWishlist(productId);
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["wishlist"] }),
   });
 }

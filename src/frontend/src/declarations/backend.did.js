@@ -8,258 +8,583 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const UserId = IDL.Principal;
 export const ProductId = IDL.Nat;
-export const OrderId = IDL.Nat;
-export const OrderStatus = IDL.Variant({
-  'shipped' : IDL.Null,
-  'cancelled' : IDL.Null,
-  'pending' : IDL.Null,
-  'paid' : IDL.Null,
-  'delivered' : IDL.Null,
-});
 export const Timestamp = IDL.Int;
-export const ShippingAddress = IDL.Record({
-  'zip' : IDL.Text,
-  'street' : IDL.Text,
-  'country' : IDL.Text,
-  'city' : IDL.Text,
-  'name' : IDL.Text,
-  'state' : IDL.Text,
-});
-export const OrderItem = IDL.Record({
-  'title' : IDL.Text,
-  'productId' : ProductId,
-  'quantity' : IDL.Nat,
-  'price' : IDL.Nat,
-});
-export const Order = IDL.Record({
-  'id' : OrderId,
-  'status' : OrderStatus,
-  'total' : IDL.Nat,
-  'userId' : UserId,
-  'createdAt' : Timestamp,
-  'paymentIntent' : IDL.Text,
-  'shippingAddress' : ShippingAddress,
-  'items' : IDL.Vec(OrderItem),
-});
-export const CreateOrderArgs = IDL.Record({
-  'paymentIntent' : IDL.Text,
-  'shippingAddress' : ShippingAddress,
-});
-export const ProductInput = IDL.Record({
-  'title' : IDL.Text,
-  'description' : IDL.Text,
-  'category' : IDL.Text,
-  'inventoryCount' : IDL.Nat,
-  'price' : IDL.Nat,
-  'images' : IDL.Vec(IDL.Text),
-});
 export const Product = IDL.Record({
   'id' : ProductId,
-  'title' : IDL.Text,
+  'sku' : IDL.Text,
+  'stockQuantity' : IDL.Nat,
+  'name' : IDL.Text,
   'createdAt' : Timestamp,
-  'description' : IDL.Text,
+  'sellingPrice' : IDL.Nat,
   'category' : IDL.Text,
-  'inventoryCount' : IDL.Nat,
-  'price' : IDL.Nat,
-  'soldCount' : IDL.Nat,
-  'images' : IDL.Vec(IDL.Text),
+  'costPrice' : IDL.Nat,
+  'reorderThreshold' : IDL.Nat,
 });
-export const CartItem = IDL.Record({
+export const UserId = IDL.Principal;
+export const Role = IDL.Variant({
+  'manager' : IDL.Null,
+  'admin' : IDL.Null,
+  'finance' : IDL.Null,
+  'sales_rep' : IDL.Null,
+});
+export const ActivityId = IDL.Nat;
+export const ActivityType = IDL.Variant({
+  'call' : IDL.Null,
+  'task' : IDL.Null,
+  'email' : IDL.Null,
+  'meeting' : IDL.Null,
+});
+export const DealId = IDL.Nat;
+export const ContactId = IDL.Nat;
+export const Activity = IDL.Record({
+  'id' : ActivityId,
+  'completedAt' : IDL.Opt(Timestamp),
+  'activityType' : ActivityType,
+  'createdAt' : Timestamp,
+  'createdBy' : UserId,
+  'dueDate' : Timestamp,
+  'description' : IDL.Text,
+  'dealId' : IDL.Opt(DealId),
+  'contactId' : ContactId,
+});
+export const ContactStatus = IDL.Variant({
+  'customer' : IDL.Null,
+  'lead' : IDL.Null,
+  'prospect' : IDL.Null,
+});
+export const Contact = IDL.Record({
+  'id' : ContactId,
+  'status' : ContactStatus,
+  'name' : IDL.Text,
+  'createdAt' : Timestamp,
+  'email' : IDL.Text,
+  'company' : IDL.Text,
+  'notes' : IDL.Text,
+  'phone' : IDL.Text,
+});
+export const DealStage = IDL.Variant({
+  'closed_won' : IDL.Null,
+  'discovery' : IDL.Null,
+  'prospect' : IDL.Null,
+  'closed_lost' : IDL.Null,
+  'proposal' : IDL.Null,
+  'negotiation' : IDL.Null,
+});
+export const Deal = IDL.Record({
+  'id' : DealId,
+  'probability' : IDL.Nat,
+  'closeDate' : Timestamp,
+  'title' : IDL.Text,
+  'value' : IDL.Nat,
+  'createdAt' : Timestamp,
+  'stage' : DealStage,
+  'notes' : IDL.Text,
+  'contactId' : ContactId,
+});
+export const EntityId = IDL.Nat;
+export const InvoiceLineItem = IDL.Record({
+  'description' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'unitPrice' : IDL.Nat,
+});
+export const InvoiceId = IDL.Nat;
+export const InvoiceStatus = IDL.Variant({
+  'cancelled' : IDL.Null,
+  'paid' : IDL.Null,
+  'sent' : IDL.Null,
+  'overdue' : IDL.Null,
+  'draft' : IDL.Null,
+});
+export const Invoice = IDL.Record({
+  'id' : InvoiceId,
+  'status' : InvoiceStatus,
+  'lineItems' : IDL.Vec(InvoiceLineItem),
+  'dueDate' : Timestamp,
+  'dealId' : IDL.Opt(EntityId),
+  'invoiceNumber' : IDL.Text,
+  'contactId' : EntityId,
+  'issuedAt' : Timestamp,
+  'paidAt' : IDL.Opt(Timestamp),
+});
+export const PurchaseLineItem = IDL.Record({
   'productId' : ProductId,
   'quantity' : IDL.Nat,
+  'unitCost' : IDL.Nat,
 });
-export const Cart = IDL.Record({
-  'userId' : UserId,
-  'items' : IDL.Vec(CartItem),
+export const PurchaseOrderId = IDL.Nat;
+export const PurchaseOrderStatus = IDL.Variant({
+  'cancelled' : IDL.Null,
+  'submitted' : IDL.Null,
+  'draft' : IDL.Null,
+  'received' : IDL.Null,
 });
-export const Wishlist = IDL.Record({
-  'productIds' : IDL.Vec(ProductId),
-  'userId' : UserId,
+export const PurchaseOrder = IDL.Record({
+  'id' : PurchaseOrderId,
+  'status' : PurchaseOrderStatus,
+  'lineItems' : IDL.Vec(PurchaseLineItem),
+  'createdAt' : Timestamp,
+  'vendor' : IDL.Text,
+  'expectedDelivery' : Timestamp,
 });
-export const SortOption = IDL.Variant({
-  'bestSelling' : IDL.Null,
-  'newest' : IDL.Null,
-  'priceDesc' : IDL.Null,
-  'priceAsc' : IDL.Null,
+export const FinancialSummary = IDL.Record({
+  'grossMargin' : IDL.Nat,
+  'totalExpenses' : IDL.Nat,
+  'outstandingReceivables' : IDL.Nat,
+  'cashBalance' : IDL.Int,
+  'inventoryValue' : IDL.Nat,
+  'totalRevenue' : IDL.Nat,
 });
-export const ListProductsArgs = IDL.Record({
-  'sortBy' : SortOption,
-  'page' : IDL.Nat,
-  'pageSize' : IDL.Nat,
-  'search' : IDL.Opt(IDL.Text),
-  'maxPrice' : IDL.Opt(IDL.Nat),
-  'category' : IDL.Opt(IDL.Text),
-  'minPrice' : IDL.Opt(IDL.Nat),
-});
-export const PageResult = IDL.Record({
-  'total' : IDL.Nat,
-  'page' : IDL.Nat,
-  'pageSize' : IDL.Nat,
-  'items' : IDL.Vec(Product),
-});
+export const UserRole = IDL.Record({ 'userId' : UserId, 'role' : Role });
 
 export const idlService = IDL.Service({
-  'addAdmin' : IDL.Func([UserId], [], []),
-  'addToCart' : IDL.Func([ProductId, IDL.Nat], [], []),
-  'addToWishlist' : IDL.Func([ProductId], [], []),
-  'adminListOrders' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Vec(Order)], []),
-  'adminUpdateOrderStatus' : IDL.Func(
-      [OrderId, OrderStatus],
-      [IDL.Opt(Order)],
+  'adjustStock' : IDL.Func([ProductId, IDL.Int], [IDL.Opt(Product)], []),
+  'assignRole' : IDL.Func([UserId, Role], [], []),
+  'bootstrapFirstAdmin' : IDL.Func([], [], []),
+  'completeActivity' : IDL.Func(
+      [ActivityId, Timestamp],
+      [IDL.Variant({ 'ok' : IDL.Opt(Activity), 'err' : IDL.Text })],
       [],
     ),
-  'clearCart' : IDL.Func([], [], []),
-  'createOrder' : IDL.Func([CreateOrderArgs], [Order], []),
-  'createProduct' : IDL.Func([ProductInput], [Product], []),
+  'createActivity' : IDL.Func(
+      [ActivityType, IDL.Text, ContactId, IDL.Opt(DealId), Timestamp],
+      [IDL.Variant({ 'ok' : Activity, 'err' : IDL.Text })],
+      [],
+    ),
+  'createContact' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text, ContactStatus, IDL.Text],
+      [IDL.Variant({ 'ok' : Contact, 'err' : IDL.Text })],
+      [],
+    ),
+  'createDeal' : IDL.Func(
+      [IDL.Text, IDL.Nat, DealStage, ContactId, IDL.Nat, Timestamp, IDL.Text],
+      [IDL.Variant({ 'ok' : Deal, 'err' : IDL.Text })],
+      [],
+    ),
+  'createInvoice' : IDL.Func(
+      [EntityId, IDL.Opt(EntityId), IDL.Vec(InvoiceLineItem), Timestamp],
+      [Invoice],
+      [],
+    ),
+  'createProduct' : IDL.Func(
+      [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text],
+      [Product],
+      [],
+    ),
+  'createPurchaseOrder' : IDL.Func(
+      [IDL.Text, IDL.Vec(PurchaseLineItem), Timestamp],
+      [PurchaseOrder],
+      [],
+    ),
+  'deleteActivity' : IDL.Func(
+      [ActivityId],
+      [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+      [],
+    ),
+  'deleteContact' : IDL.Func(
+      [ContactId],
+      [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+      [],
+    ),
+  'deleteDeal' : IDL.Func(
+      [DealId],
+      [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+      [],
+    ),
+  'deleteInvoice' : IDL.Func([InvoiceId], [IDL.Bool], []),
   'deleteProduct' : IDL.Func([ProductId], [IDL.Bool], []),
-  'getCart' : IDL.Func([], [Cart], ['query']),
-  'getMyOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
-  'getOrder' : IDL.Func([OrderId], [IDL.Opt(Order)], []),
-  'getProduct' : IDL.Func([ProductId], [IDL.Opt(Product)], ['query']),
-  'getWishlist' : IDL.Func([], [Wishlist], ['query']),
-  'initializeAdmin' : IDL.Func([], [], []),
-  'isAdmin' : IDL.Func([UserId], [IDL.Bool], ['query']),
-  'listProducts' : IDL.Func([ListProductsArgs], [PageResult], ['query']),
-  'removeAdmin' : IDL.Func([UserId], [], []),
-  'removeFromCart' : IDL.Func([ProductId], [], []),
-  'removeFromWishlist' : IDL.Func([ProductId], [], []),
-  'searchProducts' : IDL.Func(
-      [IDL.Text, IDL.Nat, IDL.Nat],
-      [PageResult],
+  'filterActivities' : IDL.Func(
+      [IDL.Opt(ContactId), IDL.Opt(DealId)],
+      [IDL.Vec(Activity)],
       ['query'],
     ),
-  'updateCartQuantity' : IDL.Func([ProductId, IDL.Nat], [], []),
-  'updateProduct' : IDL.Func([ProductId, ProductInput], [IDL.Opt(Product)], []),
+  'filterDeals' : IDL.Func(
+      [IDL.Opt(DealStage), IDL.Opt(ContactId)],
+      [IDL.Vec(Deal)],
+      ['query'],
+    ),
+  'getActivity' : IDL.Func([ActivityId], [IDL.Opt(Activity)], ['query']),
+  'getContact' : IDL.Func([ContactId], [IDL.Opt(Contact)], ['query']),
+  'getDeal' : IDL.Func([DealId], [IDL.Opt(Deal)], ['query']),
+  'getFinancialSummary' : IDL.Func([], [FinancialSummary], ['query']),
+  'getInvoice' : IDL.Func([InvoiceId], [IDL.Opt(Invoice)], ['query']),
+  'getLowStockProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
+  'getMyRole' : IDL.Func([], [IDL.Opt(Role)], ['query']),
+  'getProduct' : IDL.Func([ProductId], [IDL.Opt(Product)], ['query']),
+  'getPurchaseOrder' : IDL.Func(
+      [PurchaseOrderId],
+      [IDL.Opt(PurchaseOrder)],
+      ['query'],
+    ),
+  'getRevenueByPeriod' : IDL.Func(
+      [IDL.Nat],
+      [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
+      ['query'],
+    ),
+  'listActivities' : IDL.Func([], [IDL.Vec(Activity)], ['query']),
+  'listContacts' : IDL.Func([], [IDL.Vec(Contact)], ['query']),
+  'listDeals' : IDL.Func([], [IDL.Vec(Deal)], ['query']),
+  'listInvoices' : IDL.Func([], [IDL.Vec(Invoice)], ['query']),
+  'listProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
+  'listPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
+  'listUserRoles' : IDL.Func([], [IDL.Vec(UserRole)], ['query']),
+  'removeRole' : IDL.Func([UserId], [], []),
+  'searchContacts' : IDL.Func(
+      [
+        IDL.Opt(IDL.Text),
+        IDL.Opt(IDL.Text),
+        IDL.Opt(IDL.Text),
+        IDL.Opt(ContactStatus),
+      ],
+      [IDL.Vec(Contact)],
+      ['query'],
+    ),
+  'searchProducts' : IDL.Func(
+      [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool],
+      [IDL.Vec(Product)],
+      ['query'],
+    ),
+  'updateContact' : IDL.Func(
+      [
+        ContactId,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        ContactStatus,
+        IDL.Text,
+      ],
+      [IDL.Variant({ 'ok' : IDL.Opt(Contact), 'err' : IDL.Text })],
+      [],
+    ),
+  'updateDeal' : IDL.Func(
+      [
+        DealId,
+        IDL.Text,
+        IDL.Nat,
+        DealStage,
+        ContactId,
+        IDL.Nat,
+        Timestamp,
+        IDL.Text,
+      ],
+      [IDL.Variant({ 'ok' : IDL.Opt(Deal), 'err' : IDL.Text })],
+      [],
+    ),
+  'updateInvoiceStatus' : IDL.Func(
+      [InvoiceId, InvoiceStatus, IDL.Opt(Timestamp)],
+      [IDL.Opt(Invoice)],
+      [],
+    ),
+  'updateProduct' : IDL.Func(
+      [
+        ProductId,
+        IDL.Text,
+        IDL.Text,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Text,
+      ],
+      [IDL.Opt(Product)],
+      [],
+    ),
+  'updatePurchaseOrderStatus' : IDL.Func(
+      [PurchaseOrderId, PurchaseOrderStatus],
+      [IDL.Opt(PurchaseOrder)],
+      [],
+    ),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  const UserId = IDL.Principal;
   const ProductId = IDL.Nat;
-  const OrderId = IDL.Nat;
-  const OrderStatus = IDL.Variant({
-    'shipped' : IDL.Null,
-    'cancelled' : IDL.Null,
-    'pending' : IDL.Null,
-    'paid' : IDL.Null,
-    'delivered' : IDL.Null,
-  });
   const Timestamp = IDL.Int;
-  const ShippingAddress = IDL.Record({
-    'zip' : IDL.Text,
-    'street' : IDL.Text,
-    'country' : IDL.Text,
-    'city' : IDL.Text,
-    'name' : IDL.Text,
-    'state' : IDL.Text,
-  });
-  const OrderItem = IDL.Record({
-    'title' : IDL.Text,
-    'productId' : ProductId,
-    'quantity' : IDL.Nat,
-    'price' : IDL.Nat,
-  });
-  const Order = IDL.Record({
-    'id' : OrderId,
-    'status' : OrderStatus,
-    'total' : IDL.Nat,
-    'userId' : UserId,
-    'createdAt' : Timestamp,
-    'paymentIntent' : IDL.Text,
-    'shippingAddress' : ShippingAddress,
-    'items' : IDL.Vec(OrderItem),
-  });
-  const CreateOrderArgs = IDL.Record({
-    'paymentIntent' : IDL.Text,
-    'shippingAddress' : ShippingAddress,
-  });
-  const ProductInput = IDL.Record({
-    'title' : IDL.Text,
-    'description' : IDL.Text,
-    'category' : IDL.Text,
-    'inventoryCount' : IDL.Nat,
-    'price' : IDL.Nat,
-    'images' : IDL.Vec(IDL.Text),
-  });
   const Product = IDL.Record({
     'id' : ProductId,
-    'title' : IDL.Text,
+    'sku' : IDL.Text,
+    'stockQuantity' : IDL.Nat,
+    'name' : IDL.Text,
     'createdAt' : Timestamp,
-    'description' : IDL.Text,
+    'sellingPrice' : IDL.Nat,
     'category' : IDL.Text,
-    'inventoryCount' : IDL.Nat,
-    'price' : IDL.Nat,
-    'soldCount' : IDL.Nat,
-    'images' : IDL.Vec(IDL.Text),
+    'costPrice' : IDL.Nat,
+    'reorderThreshold' : IDL.Nat,
   });
-  const CartItem = IDL.Record({
+  const UserId = IDL.Principal;
+  const Role = IDL.Variant({
+    'manager' : IDL.Null,
+    'admin' : IDL.Null,
+    'finance' : IDL.Null,
+    'sales_rep' : IDL.Null,
+  });
+  const ActivityId = IDL.Nat;
+  const ActivityType = IDL.Variant({
+    'call' : IDL.Null,
+    'task' : IDL.Null,
+    'email' : IDL.Null,
+    'meeting' : IDL.Null,
+  });
+  const DealId = IDL.Nat;
+  const ContactId = IDL.Nat;
+  const Activity = IDL.Record({
+    'id' : ActivityId,
+    'completedAt' : IDL.Opt(Timestamp),
+    'activityType' : ActivityType,
+    'createdAt' : Timestamp,
+    'createdBy' : UserId,
+    'dueDate' : Timestamp,
+    'description' : IDL.Text,
+    'dealId' : IDL.Opt(DealId),
+    'contactId' : ContactId,
+  });
+  const ContactStatus = IDL.Variant({
+    'customer' : IDL.Null,
+    'lead' : IDL.Null,
+    'prospect' : IDL.Null,
+  });
+  const Contact = IDL.Record({
+    'id' : ContactId,
+    'status' : ContactStatus,
+    'name' : IDL.Text,
+    'createdAt' : Timestamp,
+    'email' : IDL.Text,
+    'company' : IDL.Text,
+    'notes' : IDL.Text,
+    'phone' : IDL.Text,
+  });
+  const DealStage = IDL.Variant({
+    'closed_won' : IDL.Null,
+    'discovery' : IDL.Null,
+    'prospect' : IDL.Null,
+    'closed_lost' : IDL.Null,
+    'proposal' : IDL.Null,
+    'negotiation' : IDL.Null,
+  });
+  const Deal = IDL.Record({
+    'id' : DealId,
+    'probability' : IDL.Nat,
+    'closeDate' : Timestamp,
+    'title' : IDL.Text,
+    'value' : IDL.Nat,
+    'createdAt' : Timestamp,
+    'stage' : DealStage,
+    'notes' : IDL.Text,
+    'contactId' : ContactId,
+  });
+  const EntityId = IDL.Nat;
+  const InvoiceLineItem = IDL.Record({
+    'description' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'unitPrice' : IDL.Nat,
+  });
+  const InvoiceId = IDL.Nat;
+  const InvoiceStatus = IDL.Variant({
+    'cancelled' : IDL.Null,
+    'paid' : IDL.Null,
+    'sent' : IDL.Null,
+    'overdue' : IDL.Null,
+    'draft' : IDL.Null,
+  });
+  const Invoice = IDL.Record({
+    'id' : InvoiceId,
+    'status' : InvoiceStatus,
+    'lineItems' : IDL.Vec(InvoiceLineItem),
+    'dueDate' : Timestamp,
+    'dealId' : IDL.Opt(EntityId),
+    'invoiceNumber' : IDL.Text,
+    'contactId' : EntityId,
+    'issuedAt' : Timestamp,
+    'paidAt' : IDL.Opt(Timestamp),
+  });
+  const PurchaseLineItem = IDL.Record({
     'productId' : ProductId,
     'quantity' : IDL.Nat,
+    'unitCost' : IDL.Nat,
   });
-  const Cart = IDL.Record({ 'userId' : UserId, 'items' : IDL.Vec(CartItem) });
-  const Wishlist = IDL.Record({
-    'productIds' : IDL.Vec(ProductId),
-    'userId' : UserId,
+  const PurchaseOrderId = IDL.Nat;
+  const PurchaseOrderStatus = IDL.Variant({
+    'cancelled' : IDL.Null,
+    'submitted' : IDL.Null,
+    'draft' : IDL.Null,
+    'received' : IDL.Null,
   });
-  const SortOption = IDL.Variant({
-    'bestSelling' : IDL.Null,
-    'newest' : IDL.Null,
-    'priceDesc' : IDL.Null,
-    'priceAsc' : IDL.Null,
+  const PurchaseOrder = IDL.Record({
+    'id' : PurchaseOrderId,
+    'status' : PurchaseOrderStatus,
+    'lineItems' : IDL.Vec(PurchaseLineItem),
+    'createdAt' : Timestamp,
+    'vendor' : IDL.Text,
+    'expectedDelivery' : Timestamp,
   });
-  const ListProductsArgs = IDL.Record({
-    'sortBy' : SortOption,
-    'page' : IDL.Nat,
-    'pageSize' : IDL.Nat,
-    'search' : IDL.Opt(IDL.Text),
-    'maxPrice' : IDL.Opt(IDL.Nat),
-    'category' : IDL.Opt(IDL.Text),
-    'minPrice' : IDL.Opt(IDL.Nat),
+  const FinancialSummary = IDL.Record({
+    'grossMargin' : IDL.Nat,
+    'totalExpenses' : IDL.Nat,
+    'outstandingReceivables' : IDL.Nat,
+    'cashBalance' : IDL.Int,
+    'inventoryValue' : IDL.Nat,
+    'totalRevenue' : IDL.Nat,
   });
-  const PageResult = IDL.Record({
-    'total' : IDL.Nat,
-    'page' : IDL.Nat,
-    'pageSize' : IDL.Nat,
-    'items' : IDL.Vec(Product),
-  });
+  const UserRole = IDL.Record({ 'userId' : UserId, 'role' : Role });
   
   return IDL.Service({
-    'addAdmin' : IDL.Func([UserId], [], []),
-    'addToCart' : IDL.Func([ProductId, IDL.Nat], [], []),
-    'addToWishlist' : IDL.Func([ProductId], [], []),
-    'adminListOrders' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Vec(Order)], []),
-    'adminUpdateOrderStatus' : IDL.Func(
-        [OrderId, OrderStatus],
-        [IDL.Opt(Order)],
+    'adjustStock' : IDL.Func([ProductId, IDL.Int], [IDL.Opt(Product)], []),
+    'assignRole' : IDL.Func([UserId, Role], [], []),
+    'bootstrapFirstAdmin' : IDL.Func([], [], []),
+    'completeActivity' : IDL.Func(
+        [ActivityId, Timestamp],
+        [IDL.Variant({ 'ok' : IDL.Opt(Activity), 'err' : IDL.Text })],
         [],
       ),
-    'clearCart' : IDL.Func([], [], []),
-    'createOrder' : IDL.Func([CreateOrderArgs], [Order], []),
-    'createProduct' : IDL.Func([ProductInput], [Product], []),
+    'createActivity' : IDL.Func(
+        [ActivityType, IDL.Text, ContactId, IDL.Opt(DealId), Timestamp],
+        [IDL.Variant({ 'ok' : Activity, 'err' : IDL.Text })],
+        [],
+      ),
+    'createContact' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, ContactStatus, IDL.Text],
+        [IDL.Variant({ 'ok' : Contact, 'err' : IDL.Text })],
+        [],
+      ),
+    'createDeal' : IDL.Func(
+        [IDL.Text, IDL.Nat, DealStage, ContactId, IDL.Nat, Timestamp, IDL.Text],
+        [IDL.Variant({ 'ok' : Deal, 'err' : IDL.Text })],
+        [],
+      ),
+    'createInvoice' : IDL.Func(
+        [EntityId, IDL.Opt(EntityId), IDL.Vec(InvoiceLineItem), Timestamp],
+        [Invoice],
+        [],
+      ),
+    'createProduct' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text],
+        [Product],
+        [],
+      ),
+    'createPurchaseOrder' : IDL.Func(
+        [IDL.Text, IDL.Vec(PurchaseLineItem), Timestamp],
+        [PurchaseOrder],
+        [],
+      ),
+    'deleteActivity' : IDL.Func(
+        [ActivityId],
+        [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+        [],
+      ),
+    'deleteContact' : IDL.Func(
+        [ContactId],
+        [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+        [],
+      ),
+    'deleteDeal' : IDL.Func(
+        [DealId],
+        [IDL.Variant({ 'ok' : IDL.Bool, 'err' : IDL.Text })],
+        [],
+      ),
+    'deleteInvoice' : IDL.Func([InvoiceId], [IDL.Bool], []),
     'deleteProduct' : IDL.Func([ProductId], [IDL.Bool], []),
-    'getCart' : IDL.Func([], [Cart], ['query']),
-    'getMyOrders' : IDL.Func([], [IDL.Vec(Order)], ['query']),
-    'getOrder' : IDL.Func([OrderId], [IDL.Opt(Order)], []),
-    'getProduct' : IDL.Func([ProductId], [IDL.Opt(Product)], ['query']),
-    'getWishlist' : IDL.Func([], [Wishlist], ['query']),
-    'initializeAdmin' : IDL.Func([], [], []),
-    'isAdmin' : IDL.Func([UserId], [IDL.Bool], ['query']),
-    'listProducts' : IDL.Func([ListProductsArgs], [PageResult], ['query']),
-    'removeAdmin' : IDL.Func([UserId], [], []),
-    'removeFromCart' : IDL.Func([ProductId], [], []),
-    'removeFromWishlist' : IDL.Func([ProductId], [], []),
-    'searchProducts' : IDL.Func(
-        [IDL.Text, IDL.Nat, IDL.Nat],
-        [PageResult],
+    'filterActivities' : IDL.Func(
+        [IDL.Opt(ContactId), IDL.Opt(DealId)],
+        [IDL.Vec(Activity)],
         ['query'],
       ),
-    'updateCartQuantity' : IDL.Func([ProductId, IDL.Nat], [], []),
+    'filterDeals' : IDL.Func(
+        [IDL.Opt(DealStage), IDL.Opt(ContactId)],
+        [IDL.Vec(Deal)],
+        ['query'],
+      ),
+    'getActivity' : IDL.Func([ActivityId], [IDL.Opt(Activity)], ['query']),
+    'getContact' : IDL.Func([ContactId], [IDL.Opt(Contact)], ['query']),
+    'getDeal' : IDL.Func([DealId], [IDL.Opt(Deal)], ['query']),
+    'getFinancialSummary' : IDL.Func([], [FinancialSummary], ['query']),
+    'getInvoice' : IDL.Func([InvoiceId], [IDL.Opt(Invoice)], ['query']),
+    'getLowStockProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
+    'getMyRole' : IDL.Func([], [IDL.Opt(Role)], ['query']),
+    'getProduct' : IDL.Func([ProductId], [IDL.Opt(Product)], ['query']),
+    'getPurchaseOrder' : IDL.Func(
+        [PurchaseOrderId],
+        [IDL.Opt(PurchaseOrder)],
+        ['query'],
+      ),
+    'getRevenueByPeriod' : IDL.Func(
+        [IDL.Nat],
+        [IDL.Vec(IDL.Tuple(IDL.Text, IDL.Nat))],
+        ['query'],
+      ),
+    'listActivities' : IDL.Func([], [IDL.Vec(Activity)], ['query']),
+    'listContacts' : IDL.Func([], [IDL.Vec(Contact)], ['query']),
+    'listDeals' : IDL.Func([], [IDL.Vec(Deal)], ['query']),
+    'listInvoices' : IDL.Func([], [IDL.Vec(Invoice)], ['query']),
+    'listProducts' : IDL.Func([], [IDL.Vec(Product)], ['query']),
+    'listPurchaseOrders' : IDL.Func([], [IDL.Vec(PurchaseOrder)], ['query']),
+    'listUserRoles' : IDL.Func([], [IDL.Vec(UserRole)], ['query']),
+    'removeRole' : IDL.Func([UserId], [], []),
+    'searchContacts' : IDL.Func(
+        [
+          IDL.Opt(IDL.Text),
+          IDL.Opt(IDL.Text),
+          IDL.Opt(IDL.Text),
+          IDL.Opt(ContactStatus),
+        ],
+        [IDL.Vec(Contact)],
+        ['query'],
+      ),
+    'searchProducts' : IDL.Func(
+        [IDL.Opt(IDL.Text), IDL.Opt(IDL.Text), IDL.Bool],
+        [IDL.Vec(Product)],
+        ['query'],
+      ),
+    'updateContact' : IDL.Func(
+        [
+          ContactId,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          ContactStatus,
+          IDL.Text,
+        ],
+        [IDL.Variant({ 'ok' : IDL.Opt(Contact), 'err' : IDL.Text })],
+        [],
+      ),
+    'updateDeal' : IDL.Func(
+        [
+          DealId,
+          IDL.Text,
+          IDL.Nat,
+          DealStage,
+          ContactId,
+          IDL.Nat,
+          Timestamp,
+          IDL.Text,
+        ],
+        [IDL.Variant({ 'ok' : IDL.Opt(Deal), 'err' : IDL.Text })],
+        [],
+      ),
+    'updateInvoiceStatus' : IDL.Func(
+        [InvoiceId, InvoiceStatus, IDL.Opt(Timestamp)],
+        [IDL.Opt(Invoice)],
+        [],
+      ),
     'updateProduct' : IDL.Func(
-        [ProductId, ProductInput],
+        [
+          ProductId,
+          IDL.Text,
+          IDL.Text,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Text,
+        ],
         [IDL.Opt(Product)],
+        [],
+      ),
+    'updatePurchaseOrderStatus' : IDL.Func(
+        [PurchaseOrderId, PurchaseOrderStatus],
+        [IDL.Opt(PurchaseOrder)],
         [],
       ),
   });
