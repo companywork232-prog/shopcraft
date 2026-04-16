@@ -1,0 +1,130 @@
+type Wishlist = 
+ record {
+   productIds: vec ProductId;
+   userId: UserId;
+ };
+type UserId = principal;
+type Timestamp = int;
+type SortOption = 
+ variant {
+   bestSelling;
+   newest;
+   priceAsc;
+   priceDesc;
+ };
+type ShippingAddress = 
+ record {
+   city: text;
+   country: text;
+   name: text;
+   state: text;
+   street: text;
+   zip: text;
+ };
+type ProductInput = 
+ record {
+   category: text;
+   description: text;
+   images: vec text;
+   inventoryCount: nat;
+   price: nat;
+   title: text;
+ };
+type ProductId = nat;
+type Product = 
+ record {
+   category: text;
+   createdAt: Timestamp;
+   description: text;
+   id: ProductId;
+   images: vec text;
+   inventoryCount: nat;
+   price: nat;
+   soldCount: nat;
+   title: text;
+ };
+type PageResult = 
+ record {
+   items: vec Product;
+   page: nat;
+   pageSize: nat;
+   total: nat;
+ };
+type OrderStatus = 
+ variant {
+   cancelled;
+   delivered;
+   paid;
+   pending;
+   shipped;
+ };
+type OrderItem = 
+ record {
+   price: nat;
+   productId: ProductId;
+   quantity: nat;
+   title: text;
+ };
+type OrderId = nat;
+type Order = 
+ record {
+   createdAt: Timestamp;
+   id: OrderId;
+   items: vec OrderItem;
+   paymentIntent: text;
+   shippingAddress: ShippingAddress;
+   status: OrderStatus;
+   total: nat;
+   userId: UserId;
+ };
+type ListProductsArgs = 
+ record {
+   category: opt text;
+   maxPrice: opt nat;
+   minPrice: opt nat;
+   page: nat;
+   pageSize: nat;
+   search: opt text;
+   sortBy: SortOption;
+ };
+type CreateOrderArgs = 
+ record {
+   paymentIntent: text;
+   shippingAddress: ShippingAddress;
+ };
+type CartItem = 
+ record {
+   productId: ProductId;
+   quantity: nat;
+ };
+type Cart = 
+ record {
+   items: vec CartItem;
+   userId: UserId;
+ };
+service : {
+  addAdmin: (newAdmin: UserId) -> ();
+  addToCart: (productId: ProductId, quantity: nat) -> ();
+  addToWishlist: (productId: ProductId) -> ();
+  adminListOrders: (page: nat, pageSize: nat) -> (vec Order);
+  adminUpdateOrderStatus: (id: OrderId, status: OrderStatus) -> (opt Order);
+  clearCart: () -> ();
+  createOrder: (args: CreateOrderArgs) -> (Order);
+  createProduct: (input: ProductInput) -> (Product);
+  deleteProduct: (id: ProductId) -> (bool);
+  getCart: () -> (Cart) query;
+  getMyOrders: () -> (vec Order) query;
+  getOrder: (id: OrderId) -> (opt Order);
+  getProduct: (id: ProductId) -> (opt Product) query;
+  getWishlist: () -> (Wishlist) query;
+  initializeAdmin: () -> ();
+  isAdmin: (who: UserId) -> (bool) query;
+  listProducts: (args: ListProductsArgs) -> (PageResult) query;
+  removeAdmin: (target: UserId) -> ();
+  removeFromCart: (productId: ProductId) -> ();
+  removeFromWishlist: (productId: ProductId) -> ();
+  searchProducts: (term: text, page: nat, pageSize: nat) ->
+   (PageResult) query;
+  updateCartQuantity: (productId: ProductId, quantity: nat) -> ();
+  updateProduct: (id: ProductId, input: ProductInput) -> (opt Product);
+}

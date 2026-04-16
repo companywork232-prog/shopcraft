@@ -1,0 +1,23 @@
+{
+  "overview": "A full-featured e-commerce storefront with product catalog, shopping cart, Stripe checkout, user accounts, order tracking, and an admin dashboard for managing products and orders.",
+  "features": [
+    "Product catalog with images, categories, search, and filters",
+    "Shopping cart with quantity management and session persistence",
+    "Stripe checkout with order confirmation",
+    "User accounts via Internet Identity with order history",
+    "Admin dashboard to manage products and orders",
+    "Product image uploads",
+    "Mobile-responsive design"
+  ],
+  "category": "ecommerce",
+  "tags": [
+    "ecommerce",
+    "shop",
+    "store",
+    "stripe",
+    "products",
+    "cart",
+    "orders"
+  ],
+  "last_updated": "2026-04-16T05:18:54.561Z"
+}
